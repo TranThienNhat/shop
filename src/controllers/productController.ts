@@ -20,7 +20,9 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = (page - 1) * limit;
 
-    const keyword = req.query.keyword as string;
+    // Lấy các query parameters
+    const search = req.query.search as string; // Frontend gửi 'search'
+    const keyword = req.query.keyword as string; // Backward compatibility
     const category_id = req.query.category_id
       ? parseInt(req.query.category_id as string)
       : undefined;
@@ -28,22 +30,40 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
       ? parseInt(req.query.brand_id as string)
       : undefined;
     const status = req.query.status as string;
+    const min_price = req.query.min_price
+      ? parseFloat(req.query.min_price as string)
+      : undefined;
+    const max_price = req.query.max_price
+      ? parseFloat(req.query.max_price as string)
+      : undefined;
 
+    // Build where conditions
     const where: any = {};
     if (category_id) where.category_id = category_id;
     if (brand_id) where.brand_id = brand_id;
     if (status) where.status = status;
     else where.status = "in_stock";
 
+    // Search term (support both 'search' and 'keyword')
+    const searchTerm = search || keyword;
+
     const products = await Product.findAll({
       where,
+      search: searchTerm,
+      minPrice: min_price,
+      maxPrice: max_price,
       limit,
       offset,
       orderBy: "created_at",
       orderDir: "DESC",
     });
 
-    const total = await Product.count(where);
+    const total = await Product.count({
+      ...where,
+      search: searchTerm,
+      minPrice: min_price,
+      maxPrice: max_price,
+    });
 
     return res.json({
       data: products,

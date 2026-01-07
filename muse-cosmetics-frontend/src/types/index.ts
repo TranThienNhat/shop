@@ -31,9 +31,13 @@ export interface CartItem {
   id: number;
   product_id: number;
   name: string;
-  price: number;
+  price: string;
+  sale_price?: string;
   quantity: number;
   image_url: string;
+  slug: string;
+  stock_qty: number;
+  status: string;
 }
 
 export interface User {
@@ -68,9 +72,15 @@ export interface Review {
 export interface Order {
   id: number;
   user_id: number;
+  code?: string;
   total_amount: number;
   status: string;
+  payment_method?: string;
+  shipping_name?: string;
+  shipping_phone?: string;
   shipping_address: string;
+  shipping_email?: string;
+  note?: string;
   phone: string;
   created_at: string;
   items: OrderItem[];

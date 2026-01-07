@@ -18,12 +18,12 @@ import {
   BranchesOutlined,
   ShoppingCartOutlined,
   UserOutlined,
-  BarChartOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   BellOutlined,
   HomeOutlined,
+  GiftOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -61,6 +61,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: <Link to="/admin/brands">Thương hiệu</Link>,
     },
     {
+      key: "/admin/coupons",
+      icon: <GiftOutlined />,
+      label: <Link to="/admin/coupons">Mã giảm giá</Link>,
+    },
+    {
       key: "/admin/orders",
       icon: <ShoppingCartOutlined />,
       label: <Link to="/admin/orders">Đơn hàng</Link>,
@@ -69,11 +74,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       key: "/admin/users",
       icon: <UserOutlined />,
       label: <Link to="/admin/users">Người dùng</Link>,
-    },
-    {
-      key: "/admin/reports",
-      icon: <BarChartOutlined />,
-      label: <Link to="/admin/reports">Báo cáo</Link>,
     },
   ];
 
@@ -110,7 +110,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         collapsible
         collapsed={collapsed}
         className="bg-white shadow-lg"
-        width={250}>
+        width={250}
+        style={{
+          overflow: "auto",
+          height: "100vh",
+          position: "fixed",
+          left: 0,
+          top: 0,
+          bottom: 0,
+        }}>
         <div className="p-4 border-b border-gray-200">
           <Link to="/admin" className="flex items-center gap-3">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -130,12 +138,24 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
-          className="border-none h-full"
+          className="border-none"
+          style={{ height: "calc(100vh - 80px)", borderRight: 0 }}
         />
       </Sider>
 
-      <Layout>
-        <Header className="bg-white shadow-sm px-4 flex items-center justify-between">
+      <Layout
+        style={{
+          marginLeft: collapsed ? 80 : 250,
+          transition: "margin-left 0.2s",
+        }}>
+        <Header
+          className="bg-white shadow-sm px-4 flex items-center justify-between"
+          style={{
+            position: "fixed",
+            zIndex: 1,
+            width: `calc(100% - ${collapsed ? 80 : 250}px)`,
+            transition: "width 0.2s",
+          }}>
           <div className="flex items-center gap-4">
             <Button
               type="text"
@@ -180,7 +200,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </Space>
         </Header>
 
-        <Content className="p-6 bg-gray-50">
+        <Content
+          className="p-6 bg-gray-50"
+          style={{ marginTop: 64, minHeight: "calc(100vh - 64px)" }}>
           <div className="mb-4">
             <Breadcrumb>
               <Breadcrumb.Item>
@@ -199,6 +221,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   {location.pathname.includes("/products") && "Sản phẩm"}
                   {location.pathname.includes("/categories") && "Danh mục"}
                   {location.pathname.includes("/brands") && "Thương hiệu"}
+                  {location.pathname.includes("/coupons") && "Mã giảm giá"}
                   {location.pathname.includes("/orders") && "Đơn hàng"}
                   {location.pathname.includes("/users") && "Người dùng"}
                   {location.pathname.includes("/reports") && "Báo cáo"}

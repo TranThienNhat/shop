@@ -1,17 +1,7 @@
 import React, { useEffect, useState } from "react";
-import {
-  Card,
-  Typography,
-  Spin,
-  Empty,
-  Tag,
-  Collapse,
-  Row,
-  Col,
-  Button,
-} from "antd";
+import { Card, Typography, Spin, Empty, Tag, Collapse, Button } from "antd";
 import { Link, Navigate } from "react-router-dom";
-import { Package, Calendar, MapPin, CreditCard } from "lucide-react";
+import { Calendar, MapPin, CreditCard } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { Order } from "../types";
 import api from "../utils/api";
@@ -51,10 +41,14 @@ const OrdersPage: React.FC = () => {
         return "blue";
       case "shipping":
         return "cyan";
+      case "completed":
+        return "green";
       case "delivered":
         return "green";
       case "cancelled":
         return "red";
+      case "refunded":
+        return "purple";
       default:
         return "default";
     }
@@ -68,10 +62,14 @@ const OrdersPage: React.FC = () => {
         return "Đã xác nhận";
       case "shipping":
         return "Đang giao hàng";
+      case "completed":
+        return "Hoàn tất";
       case "delivered":
         return "Đã giao hàng";
       case "cancelled":
         return "Đã hủy";
+      case "refunded":
+        return "Hoàn tiền";
       default:
         return status;
     }
@@ -142,7 +140,14 @@ const OrdersPage: React.FC = () => {
                         </span>
                         <span className="flex items-center gap-1">
                           <CreditCard size={14} />
-                          {formatCurrency(order.total_amount)}
+                          {(() => {
+                            console.log(
+                              "Order header total_amount:",
+                              order.total_amount,
+                              typeof order.total_amount
+                            );
+                            return formatCurrency(order.total_amount);
+                          })()}
                         </span>
                       </div>
                     </div>
@@ -243,22 +248,36 @@ const OrdersPage: React.FC = () => {
                           </Title>
                           <div className="bg-gray-50 p-4 rounded-lg">
                             <p className="text-charcoal">
-                              <strong>Địa chỉ:</strong> {order.shipping_address}
+                              <strong>Người nhận:</strong>{" "}
+                              {order.shipping_name || "Chưa có thông tin"}
                             </p>
                             <p className="text-charcoal mt-1">
-                              <strong>Số điện thoại:</strong> {order.phone}
+                              <strong>Số điện thoại:</strong>{" "}
+                              {order.shipping_phone ||
+                                order.phone ||
+                                "Chưa có thông tin"}
+                            </p>
+                            <p className="text-charcoal mt-1">
+                              <strong>Địa chỉ:</strong>{" "}
+                              {order.shipping_address || "Chưa có thông tin"}
                             </p>
                           </div>
                         </div>
 
-                        {/* Order Total */}
                         <div className="border-t pt-4">
                           <div className="flex justify-between text-lg">
                             <span className="text-charcoal font-semibold">
                               Tổng cộng:
                             </span>
                             <span className="text-primary font-bold">
-                              {formatCurrency(order.total_amount)}
+                              {(() => {
+                                console.log(
+                                  "Order total_amount:",
+                                  order.total_amount,
+                                  typeof order.total_amount
+                                );
+                                return formatCurrency(order.total_amount);
+                              })()}
                             </span>
                           </div>
                         </div>

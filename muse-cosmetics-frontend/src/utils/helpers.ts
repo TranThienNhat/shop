@@ -14,11 +14,20 @@ export const getImageUrl = (imagePath: string): string => {
   return `${STATIC_URL}/${imagePath}`;
 };
 
-export const formatCurrency = (amount: number): string => {
+export const formatCurrency = (
+  amount: number | string | null | undefined
+): string => {
+  // Handle null, undefined, or invalid values
+  if (amount === null || amount === undefined || isNaN(Number(amount))) {
+    return "0 ₫";
+  }
+
+  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
-  }).format(amount);
+  }).format(numAmount);
 };
 
 export const generateSlug = (text: string): string => {

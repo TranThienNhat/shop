@@ -90,9 +90,23 @@ const ProductsPage: React.FC = () => {
       params.append("min_price", priceRange[0].toString());
       params.append("max_price", priceRange[1].toString());
 
+      console.log("API call params:", {
+        searchTerm,
+        selectedCategory,
+        selectedBrand,
+        priceRange,
+        url: `/products?${params}`,
+      });
+
       const response = await api.get<ApiResponse<Product[]>>(
         `/products?${params}`
       );
+
+      console.log("API response:", {
+        products: response.data.data?.length || 0,
+        total: response.data.meta?.total || 0,
+      });
+
       setProducts(response.data.data || []);
       setTotal(response.data.meta?.total || 0);
     } catch (error) {
@@ -244,6 +258,12 @@ const ProductsPage: React.FC = () => {
                   step={100000}
                   value={priceRange}
                   onChange={setPriceRange}
+                  onAfterChange={(value) => {
+                    setPriceRange(value);
+                    setCurrentPage(1);
+                    // Trigger reload products after price change
+                    setTimeout(() => loadProducts(), 100);
+                  }}
                   tooltip={{
                     formatter: (value) => formatCurrency(value || 0),
                   }}

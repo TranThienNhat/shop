@@ -1,5 +1,15 @@
-import React from "react";
-import { Layout, Menu, Badge, Dropdown, Button, Space, Typography } from "antd";
+import React, { useState } from "react";
+import {
+  Layout,
+  Menu,
+  Badge,
+  Dropdown,
+  Button,
+  Space,
+  Typography,
+  Input,
+  Modal,
+} from "antd";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ShoppingCart,
@@ -24,6 +34,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const { totalItems } = useCart();
+  const [searchModalVisible, setSearchModalVisible] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+
+  const handleSearch = () => {
+    if (searchValue.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchValue.trim())}`);
+      setSearchModalVisible(false);
+      setSearchValue("");
+    } else {
+      navigate("/products");
+      setSearchModalVisible(false);
+    }
+  };
 
   const menuItems = [
     {
@@ -108,7 +131,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               type="text"
               icon={<Search size={20} />}
               className="text-charcoal hover:text-primary"
-              onClick={() => navigate("/search")}
+              onClick={() => setSearchModalVisible(true)}
             />
 
             {/* Cart */}
@@ -238,6 +261,33 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </div>
         </div>
       </Footer>
+
+      {/* Search Modal */}
+      <Modal
+        title="Tìm kiếm sản phẩm"
+        open={searchModalVisible}
+        onCancel={() => {
+          setSearchModalVisible(false);
+          setSearchValue("");
+        }}
+        footer={null}
+        width={500}
+        centered>
+        <div className="py-4">
+          <Input.Search
+            placeholder="Nhập tên sản phẩm bạn muốn tìm..."
+            size="large"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            onSearch={handleSearch}
+            enterButton="Tìm kiếm"
+            autoFocus
+          />
+          <div className="mt-4 text-gray-500 text-sm">
+            <p>Gợi ý: son môi, kem dưỡng da, nước hoa...</p>
+          </div>
+        </div>
+      </Modal>
     </Layout>
   );
 };

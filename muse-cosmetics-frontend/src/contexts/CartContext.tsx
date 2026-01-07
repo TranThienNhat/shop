@@ -15,6 +15,9 @@ interface CartContextType {
   items: CartItem[];
   totalItems: number;
   totalAmount: number;
+  subtotal: number;
+  discount: number;
+  couponCode: string | null;
   isLoading: boolean;
   addToCart: (productId: number, quantity?: number) => Promise<void>;
   updateQuantity: (itemId: number, quantity: number) => Promise<void>;
@@ -39,27 +42,36 @@ interface CartProviderProps {
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [subtotal, setSubtotal] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [couponCode, setCouponCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalAmount = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const totalAmount = subtotal - discount;
 
   // Load cart on component mount
   const refreshCart = useCallback(async () => {
     // Only load cart if user is authenticated
     if (!isAuthenticated) {
       setItems([]);
+      setSubtotal(0);
+      setDiscount(0);
+      setCouponCode(null);
       return;
     }
 
     try {
       setIsLoading(true);
       const response = await api.get("/cart");
-      setItems(response.data.data || []);
+      console.log("Cart API response:", response.data); // Debug log
+
+      const cartData = response.data;
+      setItems(cartData.items || []);
+      setSubtotal(cartData.subtotal || 0);
+      setDiscount(cartData.discount || 0);
+      setCouponCode(cartData.couponCode || null);
     } catch (error: any) {
       console.error("Error loading cart:", error);
       // Don't show error message for cart loading as it might be empty
@@ -82,10 +94,21 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         return;
       }
 
+      // Validate input
+      if (!productId || productId <= 0) {
+        message.error("Sản phẩm không hợp lệ");
+        return;
+      }
+
+      if (!quantity || quantity <= 0) {
+        message.error("Số lượng phải lớn hơn 0");
+        return;
+      }
+
       try {
         setIsLoading(true);
         await api.post("/cart/add", {
-          product_id: productId,
+          productId: productId,
           quantity,
         });
 
@@ -110,9 +133,17 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         return;
       }
 
+      // Find the item to get product_id
+      const item = items.find((item) => item.id === itemId);
+      if (!item) {
+        message.error("Không tìm thấy sản phẩm");
+        return;
+      }
+
       try {
         setIsLoading(true);
-        await api.delete(`/cart/remove/${itemId}`);
+        // Use product_id instead of item id
+        await api.delete(`/cart/${item.product_id}`);
 
         await refreshCart();
         message.success("Đã xóa sản phẩm khỏi giỏ hàng!");
@@ -124,7 +155,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         setIsLoading(false);
       }
     },
-    [refreshCart, isAuthenticated]
+    [refreshCart, isAuthenticated, items]
   );
 
   const updateQuantity = useCallback(
@@ -139,9 +170,17 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         return;
       }
 
+      // Find the item to get product_id
+      const item = items.find((item) => item.id === itemId);
+      if (!item) {
+        message.error("Không tìm thấy sản phẩm");
+        return;
+      }
+
       try {
         setIsLoading(true);
-        await api.put(`/cart/update/${itemId}`, {
+        // Use product_id instead of item id
+        await api.put(`/cart/${item.product_id}`, {
           quantity,
         });
 
@@ -154,7 +193,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         setIsLoading(false);
       }
     },
-    [refreshCart, removeFromCart, isAuthenticated]
+    [refreshCart, removeFromCart, isAuthenticated, items]
   );
 
   const clearCart = useCallback(async () => {
@@ -168,6 +207,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       await api.delete("/cart/clear");
 
       setItems([]);
+      setSubtotal(0);
+      setDiscount(0);
+      setCouponCode(null);
       message.success("Đã xóa tất cả sản phẩm trong giỏ hàng!");
     } catch (error: any) {
       const errorMessage =
@@ -182,6 +224,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     items,
     totalItems,
     totalAmount,
+    subtotal,
+    discount,
+    couponCode,
     isLoading,
     addToCart,
     updateQuantity,

@@ -24,6 +24,7 @@ import CategoriesPage from "./pages/admin/CategoriesPage";
 import BrandsPage from "./pages/admin/BrandsPage";
 import AdminOrdersPage from "./pages/admin/OrdersPage";
 import UsersPage from "./pages/admin/UsersPage";
+import CouponManagement from "./pages/admin/CouponManagement";
 import "./index.css";
 
 const App: React.FC = () => {
@@ -68,6 +69,7 @@ const App: React.FC = () => {
                         <Route path="/brands" element={<BrandsPage />} />
                         <Route path="/orders" element={<AdminOrdersPage />} />
                         <Route path="/users" element={<UsersPage />} />
+                        <Route path="/coupons" element={<CouponManagement />} />
                         {/* Add more admin routes here */}
                       </Routes>
                     </AdminLayout>

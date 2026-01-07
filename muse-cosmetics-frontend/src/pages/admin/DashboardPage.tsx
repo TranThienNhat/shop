@@ -7,7 +7,6 @@ import {
   Typography,
   Table,
   Tag,
-  Space,
   Button,
 } from "antd";
 import {
@@ -15,8 +14,6 @@ import {
   UserOutlined,
   DollarOutlined,
   ShoppingCartOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import api from "../../utils/api";
@@ -33,6 +30,13 @@ interface DashboardStats {
   topProducts: any[];
 }
 
+interface RevenueStats {
+  period: string;
+  revenue: number;
+  orders: number;
+  avg_order_value: number;
+}
+
 const DashboardPage: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalProducts: 0,
@@ -43,6 +47,7 @@ const DashboardPage: React.FC = () => {
     topProducts: [],
   });
   const [loading, setLoading] = useState(true);
+  const [revenueStats, setRevenueStats] = useState<RevenueStats[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -50,22 +55,47 @@ const DashboardPage: React.FC = () => {
 
   const loadDashboardData = async () => {
     try {
-      // Simulate API calls - replace with actual endpoints
-      const [productsRes, ordersRes] = await Promise.all([
-        api.get("/products?limit=1000"),
-        api.get("/orders?limit=10"),
+      setLoading(true);
+
+      // Gọi API thống kê thực tế
+      const [statsResponse, revenueResponse] = await Promise.all([
+        api.get("/dashboard/stats"),
+        api.get("/dashboard/revenue?period=month"),
       ]);
 
+      const data = statsResponse.data.data;
+
       setStats({
-        totalProducts: productsRes.data.data?.length || 0,
-        totalUsers: 150, // Mock data
-        totalOrders: ordersRes.data.data?.length || 0,
-        totalRevenue: 25000000, // Mock data
-        recentOrders: ordersRes.data.data || [],
-        topProducts: productsRes.data.data?.slice(0, 5) || [],
+        totalProducts: data.totalProducts,
+        totalUsers: data.totalUsers,
+        totalOrders: data.totalOrders,
+        totalRevenue: data.totalRevenue,
+        recentOrders: data.recentOrders,
+        topProducts: data.topProducts,
       });
+
+      setRevenueStats(revenueResponse.data.data || []);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
+
+      // Fallback to mock data if API fails
+      try {
+        const [productsRes, ordersRes] = await Promise.all([
+          api.get("/products?limit=1000"),
+          api.get("/orders?limit=10"),
+        ]);
+
+        setStats({
+          totalProducts: productsRes.data.data?.length || 0,
+          totalUsers: 150, // Mock data as fallback
+          totalOrders: ordersRes.data.data?.length || 0,
+          totalRevenue: 25000000, // Mock data as fallback
+          recentOrders: ordersRes.data.data || [],
+          topProducts: productsRes.data.data?.slice(0, 5) || [],
+        });
+      } catch (fallbackError) {
+        console.error("Fallback API also failed:", fallbackError);
+      }
     } finally {
       setLoading(false);
     }

@@ -11,6 +11,8 @@ import orderRoutes from "./routes/orderRoutes";
 import reviewRoutes from "./routes/reviewRoutes";
 import userRoutes from "./routes/userRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
+import couponRoutes from "./routes/couponRoutes";
+import dashboardRoutes from "./routes/dashboardRoutes";
 
 dotenv.config();
 
@@ -32,15 +34,17 @@ app.use("/api/products", productRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/categories", categoryRoutes);
 
-// 3. Shopping (Giỏ hàng, Đặt hàng)
+// 3. Shopping (Giỏ hàng, Đặt hàng, Mã giảm giá)
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/coupons", couponRoutes);
 
 // 4. Social (Đánh giá)
 app.use("/api/reviews", reviewRoutes);
 
-// 5. Admin (Quản lý người dùng)
+// 5. Admin (Quản lý người dùng, Dashboard)
 app.use("/api/users", userRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // 6. Upload (Upload files)
 app.use("/api/upload", uploadRoutes);

@@ -64,7 +64,25 @@ const ProductDetailPage: React.FC = () => {
   };
 
   const handleAddToCart = async () => {
-    if (!product) return;
+    if (!product) {
+      message.error("Không tìm thấy thông tin sản phẩm");
+      return;
+    }
+
+    if (!product.id) {
+      message.error("ID sản phẩm không hợp lệ");
+      return;
+    }
+
+    if (product.stock_qty <= 0) {
+      message.error("Sản phẩm đã hết hàng");
+      return;
+    }
+
+    if (quantity > product.stock_qty) {
+      message.error(`Chỉ còn ${product.stock_qty} sản phẩm trong kho`);
+      return;
+    }
 
     try {
       setAddingToCart(true);

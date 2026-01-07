@@ -1,231 +1,216 @@
-CREATE TABLE users (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    phone VARCHAR(20),
-    avatar VARCHAR(255),
-    role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
-    is_active BOOLEAN DEFAULT TRUE,
-    last_login_at DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS brands (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) NOT NULL UNIQUE,
-    image_url VARCHAR(255),
-    description TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS categories (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    parent_id BIGINT NULL,
-    name VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) NOT NULL UNIQUE,
-    image_url VARCHAR(255),
-    description TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+SET FOREIGN_KEY_CHECKS = 0;
 
-    CONSTRAINT fk_categories_parent
-        FOREIGN KEY (parent_id) REFERENCES categories(id)
-);
-CREATE TABLE IF NOT EXISTS products (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    category_id BIGINT,
-    brand_id BIGINT,
-    name VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) NOT NULL UNIQUE,
+DROP TABLE IF EXISTS `brands`;
+CREATE TABLE `brands` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `slug` varchar(255) NOT NULL,
+  `image_url` varchar(255) DEFAULT NULL,
+  `description` text,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    price DECIMAL(15,2) NOT NULL,
-    sale_price DECIMAL(15,2),
-    cost DECIMAL(15,2),
-    stock_qty INT DEFAULT 0,
-    sold_qty INT DEFAULT 0,
+DROP TABLE IF EXISTS `cart_items`;
+CREATE TABLE `cart_items` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `cart_id` bigint NOT NULL,
+  `product_id` bigint NOT NULL,
+  `quantity` int DEFAULT '1',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_cart_product` (`cart_id`,`product_id`),
+  KEY `fk_cart_items_product` (`product_id`),
+  CONSTRAINT `fk_cart_items_cart` FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cart_items_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `cart_items_chk_1` CHECK ((`quantity` > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    short_description VARCHAR(2000),
-    content TEXT,
-    image_url VARCHAR(255),
+DROP TABLE IF EXISTS `carts`;
+CREATE TABLE `carts` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint DEFAULT NULL,
+  `session_id` varchar(100) DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `coupon_code` varchar(50) DEFAULT NULL,
+  `discount_amount` decimal(15,2) DEFAULT '0.00',
+  PRIMARY KEY (`id`),
+  KEY `fk_carts_users` (`user_id`),
+  KEY `idx_carts_coupon_code` (`coupon_code`),
+  CONSTRAINT `fk_carts_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `carts_chk_1` CHECK (((`user_id` is not null) or (`session_id` is not null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    capacity VARCHAR(255),
-    color VARCHAR(255),
-    ingredients TEXT,
+DROP TABLE IF EXISTS `categories`;
+CREATE TABLE `categories` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `parent_id` bigint DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `slug` varchar(255) NOT NULL,
+  `image_url` varchar(255) DEFAULT NULL,
+  `description` text,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `slug` (`slug`),
+  KEY `fk_categories_parent` (`parent_id`),
+  CONSTRAINT `fk_categories_parent` FOREIGN KEY (`parent_id`) REFERENCES `categories` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    status VARCHAR(20) DEFAULT 'in_stock',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+DROP TABLE IF EXISTS `coupons`;
+CREATE TABLE `coupons` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `code` varchar(50) NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `description` text,
+  `type` varchar(20) DEFAULT NULL,
+  `value` decimal(15,2) NOT NULL,
+  `min_order_value` decimal(15,2) DEFAULT '0.00',
+  `max_discount_value` decimal(15,2) DEFAULT NULL,
+  `quantity` int DEFAULT NULL,
+  `used_count` int DEFAULT '0',
+  `start_date` datetime DEFAULT NULL,
+  `end_date` datetime DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'active',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`),
+  CONSTRAINT `coupons_chk_1` CHECK ((`type` in (_utf8mb4'percentage',_utf8mb4'fixed_amount'))),
+  CONSTRAINT `coupons_chk_2` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive',_utf8mb4'expired')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    CONSTRAINT fk_products_categories
-        FOREIGN KEY (category_id) REFERENCES categories(id)
-        ON DELETE SET NULL,
+DROP TABLE IF EXISTS `galleries`;
+CREATE TABLE `galleries` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `product_id` bigint NOT NULL,
+  `image_url` varchar(255) NOT NULL,
+  `sort_order` int DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `fk_galleries_products` (`product_id`),
+  CONSTRAINT `fk_galleries_products` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    CONSTRAINT fk_products_brands
-        FOREIGN KEY (brand_id) REFERENCES brands(id)
-        ON DELETE SET NULL,
+DROP TABLE IF EXISTS `order_details`;
+CREATE TABLE `order_details` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `order_id` bigint NOT NULL,
+  `product_id` bigint DEFAULT NULL,
+  `product_name` varchar(255) DEFAULT NULL,
+  `price` decimal(15,2) NOT NULL,
+  `quantity` int DEFAULT NULL,
+  `total_price` decimal(15,2) DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_order_details_orders` (`order_id`),
+  KEY `fk_order_details_products` (`product_id`),
+  CONSTRAINT `fk_order_details_orders` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_order_details_products` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `order_details_chk_1` CHECK ((`quantity` > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    CHECK (stock_qty >= 0),
-    CHECK (status IN ('in_stock', 'out_of_stock', 'hidden'))
-);
-CREATE INDEX idx_products_name ON products(name);
-CREATE INDEX idx_products_sale_price ON products(sale_price);
-CREATE TABLE IF NOT EXISTS galleries (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    product_id BIGINT NOT NULL,
-    image_url VARCHAR(255) NOT NULL,
-    sort_order INT DEFAULT 0,
+DROP TABLE IF EXISTS `orders`;
+CREATE TABLE `orders` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint DEFAULT NULL,
+  `code` varchar(50) NOT NULL,
+  `subtotal` decimal(15,2) DEFAULT NULL,
+  `shipping_fee` decimal(15,2) DEFAULT '0.00',
+  `discount_amount` decimal(15,2) DEFAULT '0.00',
+  `total` decimal(15,2) DEFAULT NULL,
+  `payment_method` varchar(50) DEFAULT NULL,
+  `payment_status` varchar(20) DEFAULT 'Unpaid',
+  `shipping_name` varchar(100) DEFAULT NULL,
+  `shipping_phone` varchar(20) DEFAULT NULL,
+  `shipping_address` text,
+  `shipping_email` varchar(100) DEFAULT NULL,
+  `note` text,
+  `status` varchar(20) DEFAULT 'pending',
+  `coupon_id` bigint DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`),
+  KEY `fk_orders_users` (`user_id`),
+  KEY `fk_orders_coupons` (`coupon_id`),
+  CONSTRAINT `fk_orders_coupons` FOREIGN KEY (`coupon_id`) REFERENCES `coupons` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_orders_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `orders_chk_1` CHECK ((`payment_status` in (_utf8mb4'Unpaid',_utf8mb4'Paid',_utf8mb4'Refunded'))),
+  CONSTRAINT `orders_chk_2` CHECK ((`status` in (_utf8mb4'pending',_utf8mb4'confirmed',_utf8mb4'shipping',_utf8mb4'completed',_utf8mb4'cancelled',_utf8mb4'refunded')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    CONSTRAINT fk_galleries_products
-        FOREIGN KEY (product_id) REFERENCES products(id)
-        ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS galleries (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    product_id BIGINT NOT NULL,
-    image_url VARCHAR(255) NOT NULL,
-    sort_order INT DEFAULT 0,
+DROP TABLE IF EXISTS `products`;
+CREATE TABLE `products` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `category_id` bigint DEFAULT NULL,
+  `brand_id` bigint DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `slug` varchar(255) NOT NULL,
+  `price` decimal(15,2) NOT NULL,
+  `sale_price` decimal(15,2) DEFAULT NULL,
+  `cost` decimal(15,2) DEFAULT NULL,
+  `stock_qty` int DEFAULT '0',
+  `sold_qty` int DEFAULT '0',
+  `short_description` varchar(2000) DEFAULT NULL,
+  `content` text,
+  `image_url` varchar(255) DEFAULT NULL,
+  `capacity` varchar(255) DEFAULT NULL,
+  `color` varchar(255) DEFAULT NULL,
+  `ingredients` text,
+  `status` varchar(20) DEFAULT 'in_stock',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `slug` (`slug`),
+  KEY `fk_products_categories` (`category_id`),
+  KEY `fk_products_brands` (`brand_id`),
+  KEY `idx_products_name` (`name`),
+  KEY `idx_products_sale_price` (`sale_price`),
+  CONSTRAINT `fk_products_brands` FOREIGN KEY (`brand_id`) REFERENCES `brands` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_products_categories` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `products_chk_1` CHECK ((`stock_qty` >= 0)),
+  CONSTRAINT `products_chk_2` CHECK ((`status` in (_utf8mb4'in_stock',_utf8mb4'out_of_stock',_utf8mb4'hidden')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    CONSTRAINT fk_galleries_products
-        FOREIGN KEY (product_id) REFERENCES products(id)
-        ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS carts (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NULL,
-    session_id VARCHAR(100) NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+DROP TABLE IF EXISTS `reviews`;
+CREATE TABLE `reviews` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `product_id` bigint NOT NULL,
+  `order_id` bigint DEFAULT NULL,
+  `rating` int DEFAULT NULL,
+  `comment` text,
+  `is_approved` tinyint(1) DEFAULT '0',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_reviews_users` (`user_id`),
+  KEY `fk_reviews_products` (`product_id`),
+  CONSTRAINT `fk_reviews_products` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_reviews_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `reviews_chk_1` CHECK ((`rating` between 1 and 5))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    CONSTRAINT fk_carts_users
-        FOREIGN KEY (user_id) REFERENCES users(id)
-        ON DELETE CASCADE,
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `avatar` varchar(255) DEFAULT NULL,
+  `role` enum('user','admin') NOT NULL DEFAULT 'user',
+  `is_active` tinyint(1) DEFAULT '1',
+  `last_login_at` datetime DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-    CHECK (user_id IS NOT NULL OR session_id IS NOT NULL)
-);
-CREATE TABLE IF NOT EXISTS cart_items (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    cart_id BIGINT NOT NULL,
-    product_id BIGINT NOT NULL,
-    quantity INT DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_cart_items_cart
-        FOREIGN KEY (cart_id) REFERENCES carts(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_cart_items_product
-        FOREIGN KEY (product_id) REFERENCES products(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT uq_cart_product UNIQUE (cart_id, product_id),
-    CHECK (quantity > 0)
-);
-CREATE TABLE IF NOT EXISTS coupons (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(50) NOT NULL UNIQUE,
-    name VARCHAR(255),
-    description TEXT,
-
-    type VARCHAR(20),
-    value DECIMAL(15,2) NOT NULL,
-
-    min_order_value DECIMAL(15,2) DEFAULT 0,
-    max_discount_value DECIMAL(15,2),
-
-    quantity INT,
-    used_count INT DEFAULT 0,
-
-    start_date DATETIME,
-    end_date DATETIME,
-    status VARCHAR(20) DEFAULT 'active',
-
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    CHECK (type IN ('percentage', 'fixed_amount')),
-    CHECK (status IN ('active', 'inactive', 'expired'))
-);
-CREATE TABLE IF NOT EXISTS orders (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT,
-    code VARCHAR(50) NOT NULL UNIQUE,
-
-    subtotal DECIMAL(15,2),
-    shipping_fee DECIMAL(15,2) DEFAULT 0,
-    discount_amount DECIMAL(15,2) DEFAULT 0,
-    total DECIMAL(15,2),
-    payment_method VARCHAR(50),
-    payment_status VARCHAR(20) DEFAULT 'Unpaid',
-
-    shipping_name VARCHAR(100),
-    shipping_phone VARCHAR(20),
-    shipping_address TEXT,
-    shipping_email VARCHAR(100),
-    note TEXT,
-
-    status VARCHAR(20) DEFAULT 'pending',
-    coupon_id BIGINT NULL,
-
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_orders_users
-        FOREIGN KEY (user_id) REFERENCES users(id)
-        ON DELETE SET NULL,
-
-    CONSTRAINT fk_orders_coupons
-        FOREIGN KEY (coupon_id) REFERENCES coupons(id)
-        ON DELETE SET NULL,
-
-    CHECK (payment_status IN ('Unpaid', 'Paid', 'Refunded')),
-    CHECK (status IN ('pending', 'confirmed', 'shipping', 'completed', 'cancelled', 'refunded'))
-);
-CREATE TABLE IF NOT EXISTS order_details (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    order_id BIGINT NOT NULL,
-    product_id BIGINT NULL,
-
-    product_name VARCHAR(255),
-    price DECIMAL(15,2) NOT NULL,
-    quantity INT,
-    total_price DECIMAL(15,2),
-
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_order_details_orders
-        FOREIGN KEY (order_id) REFERENCES orders(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_order_details_products
-        FOREIGN KEY (product_id) REFERENCES products(id)
-        ON DELETE SET NULL,
-
-    CHECK (quantity > 0)
-);
-CREATE TABLE IF NOT EXISTS reviews (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    product_id BIGINT NOT NULL,
-    order_id BIGINT NULL,
-
-    rating INT,
-    comment TEXT,
-    is_approved BOOLEAN DEFAULT FALSE,
-
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_reviews_users
-        FOREIGN KEY (user_id) REFERENCES users(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_reviews_products
-        FOREIGN KEY (product_id) REFERENCES products(id)
-        ON DELETE CASCADE,
-
-    CHECK (rating BETWEEN 1 AND 5)
-);
+SET FOREIGN_KEY_CHECKS = 1;

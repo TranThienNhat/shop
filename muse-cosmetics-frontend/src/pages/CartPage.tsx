@@ -14,13 +14,22 @@ import { Link, useNavigate } from "react-router-dom";
 import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { getImageUrl, formatCurrency } from "../utils/helpers";
+import CouponSection from "../components/CouponSection";
 
 const { Title, Paragraph } = Typography;
 
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
-  const { items, totalAmount, updateQuantity, removeFromCart, isLoading } =
-    useCart();
+  const {
+    items,
+    totalAmount,
+    subtotal,
+    discount,
+    couponCode,
+    updateQuantity,
+    removeFromCart,
+    isLoading,
+  } = useCart();
 
   const handleQuantityChange = (itemId: number, newQuantity: number) => {
     if (newQuantity > 0) {
@@ -104,7 +113,9 @@ const CartPage: React.FC = () => {
                           </Title>
                           <div className="bg-primary/10 px-3 py-1 rounded-lg inline-block border border-primary/20">
                             <p className="text-primary font-semibold text-lg mb-0">
-                              {formatCurrency(item.price)}
+                              {formatCurrency(
+                                parseFloat(item.sale_price || item.price)
+                              )}
                             </p>
                           </div>
                         </div>
@@ -173,7 +184,10 @@ const CartPage: React.FC = () => {
                         <div className="text-right">
                           <p className="text-charcoal font-semibold">
                             Tạm tính:{" "}
-                            {formatCurrency(item.price * item.quantity)}
+                            {formatCurrency(
+                              parseFloat(item.sale_price || item.price) *
+                                item.quantity
+                            )}
                           </p>
                         </div>
                       </div>
@@ -206,14 +220,17 @@ const CartPage: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray">Tạm tính:</span>
                   <span className="text-charcoal font-medium">
-                    {formatCurrency(totalAmount)}
+                    {formatCurrency(subtotal)}
                   </span>
                 </div>
+
+                {/* Coupon Section */}
+                <CouponSection />
 
                 <div className="flex justify-between">
                   <span className="text-gray">Phí vận chuyển:</span>
                   <span className="text-charcoal font-medium">
-                    {totalAmount >= 500000 ? "Miễn phí" : formatCurrency(30000)}
+                    {subtotal >= 500000 ? "Miễn phí" : formatCurrency(30000)}
                   </span>
                 </div>
 
@@ -225,16 +242,16 @@ const CartPage: React.FC = () => {
                   </span>
                   <span className="text-primary font-bold">
                     {formatCurrency(
-                      totalAmount + (totalAmount >= 500000 ? 0 : 30000)
+                      totalAmount + (subtotal >= 500000 ? 0 : 30000)
                     )}
                   </span>
                 </div>
 
-                {totalAmount < 500000 && (
+                {subtotal < 500000 && (
                   <div className="bg-blue-50 p-3 rounded-lg">
                     <p className="text-blue-600 text-sm">
-                      Mua thêm {formatCurrency(500000 - totalAmount)} để được
-                      miễn phí vận chuyển!
+                      Mua thêm {formatCurrency(500000 - subtotal)} để được miễn
+                      phí vận chuyển!
                     </p>
                   </div>
                 )}
