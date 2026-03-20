@@ -3,7 +3,7 @@ import { IGallery } from "../interfaces/Gallery";
 
 class GalleryModel extends BaseModel<IGallery> {
   constructor() {
-    super("galleries");
+    super("product_galleries");
   }
 
   async deleteByProductId(productId: number) {

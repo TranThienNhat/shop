@@ -10,340 +10,246 @@ import {
   Divider,
   Steps,
   message,
+  Tag,
 } from "antd";
 import { useNavigate } from "react-router-dom";
-import { CreditCard, MapPin, User, Phone } from "lucide-react";
+import { MapPin, CreditCard, User, ChevronLeft, StickyNote, PackageCheck } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { useAuth } from "../contexts/AuthContext";
-import { CheckoutData } from "../types";
 import api from "../utils/api";
 import { getImageUrl, formatCurrency } from "../utils/helpers";
 
-const { Title, Paragraph } = Typography;
+// Bóc tách Typography chuẩn để tránh lỗi Skeleton
+const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
 
 const CheckoutPage: React.FC = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
-  const { items, totalAmount, clearCart } = useCart();
-  const { isAuthenticated, user } = useAuth();
+  const { items, subtotal, discount, totalAmount, clearCart, isLoading: cartLoading } = useCart();
+  const { user } = useAuth();
 
-  const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [orderData, setOrderData] = useState<CheckoutData | null>(null);
 
-  const shippingFee = totalAmount >= 500000 ? 0 : 30000;
+  // Phí vận chuyển: Miễn phí từ 500k, còn lại 30k
+  const shippingFee = subtotal >= 500000 ? 0 : 30000;
   const finalTotal = totalAmount + shippingFee;
 
   useEffect(() => {
-    if (items.length === 0) {
-      message.warning("Giỏ hàng trống");
+    // Nếu không có hàng trong túi, quay lại trang giỏ hàng
+    if (!cartLoading && items.length === 0) {
       navigate("/cart");
     }
-  }, [items, navigate]);
+  }, [items, navigate, cartLoading]);
 
-  useEffect(() => {
-    if (user) {
-      form.setFieldsValue({
-        name: user.name,
-        email: user.email,
-      });
-    }
-  }, [user, form]);
-
-  const handleShippingSubmit = (values: CheckoutData) => {
-    setOrderData(values);
-    setCurrentStep(1);
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!orderData) return;
+  const handlePlaceOrder = async (values: { address: string; notes?: string }) => {
+    if (!user) return message.error("Nàng vui lòng đăng nhập lại nhé!");
 
     try {
       setLoading(true);
-
+      // Gửi thông tin ship, ghi chú và phương thức thanh toán về BE
       const response = await api.post("/orders/checkout", {
         shipping_info: {
-          name: orderData.name,
-          phone: orderData.phone,
-          address: orderData.address,
+          name: user.name,
+          phone: user.phone || "Chưa cập nhật",
+          address: values.address,
         },
-        payment_method: "cod", // Cash on delivery
+        notes: values.notes, 
+        payment_method: "cod",
       });
 
-      if (response.data) {
-        message.success("Đặt hàng thành công!");
+      if (response.data && response.data.order) {
+        message.success("Đặt hàng thành công! Món quà đang được chuẩn bị ✨");
         await clearCart();
-        navigate("/checkout/success", {
-          state: { orderId: response.data.id },
+        
+        // Truyền toàn bộ dữ liệu đơn hàng sang trang Success
+        navigate("/checkout/success", { 
+          state: { order: response.data.order } 
         });
       }
     } catch (error: any) {
-      console.error("Error placing order:", error);
-      const errorMessage =
-        error.response?.data?.message || "Có lỗi xảy ra khi đặt hàng";
-      message.error(errorMessage);
+      message.error(error.response?.data?.message || "Có lỗi xảy ra, nàng kiểm tra lại nhé!");
     } finally {
       setLoading(false);
     }
   };
 
-  const steps = [
-    {
-      title: "Thông tin giao hàng",
-      icon: <MapPin size={20} />,
-    },
-    {
-      title: "Xác nhận đơn hàng",
-      icon: <CreditCard size={20} />,
-    },
-  ];
-
-  if (items.length === 0) {
-    return null;
-  }
+  if (items.length === 0 || !user) return null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
-        <Title level={1} className="!text-charcoal !mb-8 font-serif">
-          Thanh toán
-        </Title>
+    <div className="min-h-screen bg-[#fffafb] py-12">
+      <div className="max-w-6xl mx-auto px-4 lg:px-8">
+        
+        {/* Header điều hướng */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
+          <div>
+            <Button 
+              type="text" 
+              icon={<ChevronLeft size={18} />} 
+              onClick={() => navigate("/cart")}
+              className="text-gray-400 hover:text-rose-400 p-0 flex items-center mb-2"
+            >
+              Quay lại túi đồ
+            </Button>
+            <Title level={2} className="!font-serif !text-charcoal !m-0 tracking-tight">Thanh toán</Title>
+          </div>
+          <div className="w-full md:w-64">
+            <Steps current={0} size="small" className="muse-steps">
+              <Step title="Thông tin" />
+              <Step title="Hoàn tất" />
+            </Steps>
+          </div>
+        </div>
 
-        {/* Progress Steps */}
-        <Card className="border-0 shadow-sm mb-8">
-          <Steps current={currentStep} className="mb-0">
-            {steps.map((step, index) => (
-              <Step key={index} title={step.title} icon={step.icon} />
-            ))}
-          </Steps>
-        </Card>
+        <Row gutter={[32, 32]}>
+          {/* CỘT TRÁI: FORM ĐỊA CHỈ VÀ GHI CHÚ */}
+          <Col xs={24} lg={15}>
+            <div className="space-y-6">
+              <Card className="border-none shadow-sm rounded-[32px] bg-white overflow-hidden">
+                <div className="bg-rose-50/50 p-5 border-b border-rose-100 flex items-center gap-2">
+                  <User size={18} className="text-rose-400" />
+                  <Text strong className="text-rose-400 uppercase tracking-[0.15em] text-[11px]">Thông tin nàng Muse</Text>
+                </div>
+                
+                <div className="p-8">
+                  {/* Thông tin mặc định từ hệ thống */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                    <div className="space-y-1">
+                      <Text className="text-gray-400 text-[10px] uppercase tracking-widest block">Người nhận</Text>
+                      <Paragraph className="!mb-0 font-medium text-charcoal text-base font-serif">{user.name}</Paragraph>
+                    </div>
+                    <div className="space-y-1">
+                      <Text className="text-gray-400 text-[10px] uppercase tracking-widest block">Số điện thoại</Text>
+                      <Paragraph className="!mb-0 font-medium text-charcoal text-base">
+                         {user.phone || <Text type="danger" className="text-xs italic">Chưa cập nhật số điện thoại</Text>}
+                      </Paragraph>
+                    </div>
+                    <div className="md:col-span-2 space-y-1">
+                      <Text className="text-gray-400 text-[10px] uppercase tracking-widest block">Email</Text>
+                      <Paragraph className="!mb-0 font-medium text-charcoal text-base">{user.email}</Paragraph>
+                    </div>
+                  </div>
 
-        <Row gutter={[24, 24]}>
-          {/* Main Content */}
-          <Col xs={24} lg={16}>
-            {currentStep === 0 && (
-              <Card className="border-0 shadow-sm">
-                <Title level={3} className="!text-charcoal !mb-6">
-                  <MapPin size={24} className="inline mr-2" />
-                  Thông tin giao hàng
-                </Title>
+                  <Divider className="border-rose-50" />
 
-                <Form
-                  form={form}
-                  layout="vertical"
-                  onFinish={handleShippingSubmit}
-                  size="large"
-                  requiredMark={false}>
-                  <Row gutter={[16, 0]}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        name="name"
-                        label="Họ và tên"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Vui lòng nhập họ và tên",
-                          },
-                        ]}>
-                        <Input
-                          prefix={<User size={16} className="text-gray" />}
-                          placeholder="Nguyễn Văn A"
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        name="phone"
-                        label="Số điện thoại"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Vui lòng nhập số điện thoại",
-                          },
-                          {
-                            pattern: /^[0-9]{10,11}$/,
-                            message: "Số điện thoại không hợp lệ",
-                          },
-                        ]}>
-                        <Input
-                          prefix={<Phone size={16} className="text-gray" />}
-                          placeholder="0901234567"
-                        />
-                      </Form.Item>
-                    </Col>
-                  </Row>
+                  {/* Form nhập Địa chỉ & Notes */}
+                  <Form form={form} layout="vertical" onFinish={handlePlaceOrder} requiredMark={false} className="mt-8">
+                    <Form.Item
+                      name="address"
+                      label={<Text strong className="text-charcoal flex items-center gap-2"><MapPin size={16} className="text-rose-300" /> Địa chỉ nhận quà</Text>}
+                      rules={[{ required: true, message: "Muse cần địa chỉ để gửi quà đến nàng!" }]}
+                    >
+                      <Input.TextArea 
+                        rows={3} 
+                        placeholder="Số nhà, tên đường, Phường/Xã, Quận/Huyện..." 
+                        className="rounded-2xl border-rose-100 focus:border-rose-300 focus:shadow-none p-4"
+                      />
+                    </Form.Item>
 
-                  <Form.Item
-                    name="address"
-                    label="Địa chỉ giao hàng"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Vui lòng nhập địa chỉ giao hàng",
-                      },
-                    ]}>
-                    <Input.TextArea
-                      rows={3}
-                      placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố"
-                    />
-                  </Form.Item>
+                    <Form.Item
+                      name="notes"
+                      label={<Text strong className="text-charcoal flex items-center gap-2"><StickyNote size={16} className="text-rose-300" /> Ghi chú thêm (nếu có)</Text>}
+                    >
+                      <Input.TextArea 
+                        rows={2} 
+                        placeholder="Nàng có lời nhắn gì cho Muse hoặc Shipper không?" 
+                        className="rounded-2xl border-rose-100 focus:border-rose-300 focus:shadow-none p-4"
+                      />
+                    </Form.Item>
 
-                  <div className="flex justify-end">
+                    {/* Phương thức thanh toán mặc định */}
+                    <div className="bg-rose-50/30 p-5 rounded-2xl flex gap-4 items-center border border-rose-100/50 mt-10">
+                      <div className="bg-white p-3 rounded-full shadow-sm text-rose-400 flex items-center justify-center">
+                        <CreditCard size={20} />
+                      </div>
+                      <div>
+                        <Text strong className="text-charcoal block">Thanh toán khi nhận hàng (COD)</Text>
+                        <Text type="secondary" className="text-[11px]">Nàng kiểm tra quà xong rồi mới trả tiền nhé ✨</Text>
+                      </div>
+                    </div>
+
                     <Button
                       type="primary"
                       htmlType="submit"
                       size="large"
-                      className="bg-primary border-primary">
-                      Tiếp tục
+                      block
+                      loading={loading}
+                      className="bg-rose-400 border-none h-14 rounded-full font-bold uppercase tracking-[0.2em] shadow-lg shadow-rose-100 hover:!bg-rose-500 mt-12 transition-all hover:-translate-y-0.5"
+                    >
+                      Xác nhận đơn hàng
                     </Button>
-                  </div>
-                </Form>
-              </Card>
-            )}
-
-            {currentStep === 1 && orderData && (
-              <Card className="border-0 shadow-sm">
-                <Title level={3} className="!text-charcoal !mb-6">
-                  <CreditCard size={24} className="inline mr-2" />
-                  Xác nhận đơn hàng
-                </Title>
-
-                {/* Shipping Info */}
-                <div className="mb-6">
-                  <Title level={4} className="!text-charcoal !mb-4">
-                    Thông tin giao hàng
-                  </Title>
-                  <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                    <p>
-                      <strong>Họ tên:</strong> {orderData.name}
-                    </p>
-                    <p>
-                      <strong>Số điện thoại:</strong> {orderData.phone}
-                    </p>
-                    <p>
-                      <strong>Địa chỉ:</strong> {orderData.address}
-                    </p>
-                  </div>
-                  <Button
-                    type="link"
-                    onClick={() => setCurrentStep(0)}
-                    className="text-primary p-0 mt-2">
-                    Chỉnh sửa thông tin
-                  </Button>
-                </div>
-
-                {/* Payment Method */}
-                <div className="mb-6">
-                  <Title level={4} className="!text-charcoal !mb-4">
-                    Phương thức thanh toán
-                  </Title>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="font-medium">
-                      Thanh toán khi nhận hàng (COD)
-                    </p>
-                    <p className="text-gray text-sm mt-1">
-                      Bạn sẽ thanh toán bằng tiền mặt khi nhận được hàng
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex justify-between">
-                  <Button size="large" onClick={() => setCurrentStep(0)}>
-                    Quay lại
-                  </Button>
-                  <Button
-                    type="primary"
-                    size="large"
-                    loading={loading}
-                    onClick={handlePlaceOrder}
-                    className="bg-primary border-primary">
-                    Đặt hàng
-                  </Button>
+                  </Form>
                 </div>
               </Card>
-            )}
+            </div>
           </Col>
 
-          {/* Order Summary */}
-          <Col xs={24} lg={8}>
-            <Card className="border-0 shadow-sm sticky top-24">
-              <Title level={4} className="!text-charcoal !mb-6">
-                Đơn hàng của bạn
-              </Title>
-
-              {/* Order Items */}
-              <div className="space-y-4 mb-6">
-                {items.map((item) => (
-                  <div key={item.id} className="flex gap-3">
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0">
-                      <img
-                        src={getImageUrl(item.image_url)}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src =
-                            "/placeholder-product.jpg";
-                        }}
-                      />
+          {/* CỘT PHẢI: TÓM TẮT ĐƠN HÀNG */}
+          <Col xs={24} lg={9}>
+            <Card className="border-none shadow-sm rounded-[32px] sticky top-24 overflow-hidden bg-white">
+              <div className="p-6 bg-rose-50/20 border-b border-rose-50 flex items-center gap-2">
+                <PackageCheck size={18} className="text-rose-400" />
+                <Title level={4} className="!font-serif !text-charcoal !m-0">Túi đồ của nàng</Title>
+              </div>
+              
+              <div className="p-6">
+                {/* Danh sách SP rút gọn */}
+                <div className="max-h-[350px] overflow-y-auto mb-8 pr-2 space-y-4 custom-scrollbar">
+                  {items.map((item) => (
+                    <div key={item.variant_id} className="flex gap-4 items-center">
+                      <div className="w-16 h-16 rounded-2xl overflow-hidden bg-rose-50/30 border border-rose-50 flex-shrink-0">
+                        <img 
+                          src={getImageUrl(item.image_url || "")} 
+                          alt={item.name} 
+                          className="w-full h-full object-cover transition-transform hover:scale-110" 
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <Text strong className="block text-sm text-charcoal truncate font-serif">{item.name}</Text>
+                        <Text type="secondary" className="text-[11px] block">{item.variant_name} • Sl: {item.quantity}</Text>
+                      </div>
+                      <Text className="font-semibold text-charcoal text-sm">{formatCurrency(Number(item.price) * item.quantity)}</Text>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-charcoal font-medium text-sm line-clamp-2">
-                        {item.name}
-                      </p>
-                      <p className="text-gray text-sm">
-                        {formatCurrency(item.price)} x {item.quantity}
-                      </p>
-                      <p className="text-primary font-semibold text-sm">
-                        {formatCurrency(item.price * item.quantity)}
-                      </p>
+                  ))}
+                </div>
+
+                {/* Tính toán tiền */}
+                <div className="space-y-3 bg-gray-50/50 p-6 rounded-[28px]">
+                  <div className="flex justify-between items-center text-sm">
+                    <Text className="text-gray-400">Tiền hàng</Text>
+                    <Text className="text-charcoal font-medium">{formatCurrency(subtotal)}</Text>
+                  </div>
+                  
+                  {discount > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <Text className="text-rose-400 font-medium">Mã ưu đãi đã dùng</Text>
+                      <Text className="text-rose-400 font-bold">-{formatCurrency(discount)}</Text>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center text-sm">
+                    <Text className="text-gray-400">Phí vận chuyển</Text>
+                    <Text className="text-charcoal font-medium">
+                      {shippingFee === 0 ? (
+                        <Tag color="green" className="border-none rounded-full mr-0 px-3 text-[10px] uppercase font-bold tracking-wider">Miễn phí</Tag>
+                      ) : (
+                        formatCurrency(shippingFee)
+                      )}
+                    </Text>
+                  </div>
+
+                  <Divider className="my-4 border-rose-100" />
+
+                  <div className="flex justify-between items-center">
+                    <Text className="text-charcoal font-serif text-lg">Tổng cộng</Text>
+                    <div className="text-right">
+                       <Text className="text-2xl font-serif text-rose-500 font-bold block leading-none mb-1">
+                        {formatCurrency(finalTotal)}
+                      </Text>
+                      <Text className="text-[10px] text-gray-300 italic">Nàng không phát sinh thêm phí nào</Text>
                     </div>
                   </div>
-                ))}
-              </div>
-
-              <Divider />
-
-              {/* Order Total */}
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray">Tạm tính:</span>
-                  <span className="text-charcoal">
-                    {formatCurrency(totalAmount)}
-                  </span>
                 </div>
-
-                <div className="flex justify-between">
-                  <span className="text-gray">Phí vận chuyển:</span>
-                  <span className="text-charcoal">
-                    {shippingFee === 0
-                      ? "Miễn phí"
-                      : formatCurrency(shippingFee)}
-                  </span>
-                </div>
-
-                <Divider className="my-3" />
-
-                <div className="flex justify-between text-lg">
-                  <span className="text-charcoal font-semibold">
-                    Tổng cộng:
-                  </span>
-                  <span className="text-primary font-bold">
-                    {formatCurrency(finalTotal)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Security Info */}
-              <div className="bg-green-50 p-3 rounded-lg mt-6">
-                <p className="text-green-700 text-sm font-medium mb-1">
-                  Đặt hàng an toàn & bảo mật
-                </p>
-                <ul className="text-green-600 text-xs space-y-1">
-                  <li>✓ Thông tin được mã hóa SSL</li>
-                  <li>✓ Thanh toán khi nhận hàng</li>
-                  <li>✓ Đổi trả miễn phí trong 7 ngày</li>
-                </ul>
               </div>
             </Card>
           </Col>

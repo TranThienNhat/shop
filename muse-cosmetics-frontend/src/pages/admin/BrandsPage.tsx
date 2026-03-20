@@ -10,6 +10,7 @@ import {
   Card,
   Modal,
   Form,
+  Upload,
   Image,
 } from "antd";
 import {
@@ -17,15 +18,28 @@ import {
   EditOutlined,
   DeleteOutlined,
   SearchOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import api from "../../utils/api";
 import { getImageUrl } from "../../utils/helpers";
 import { Brand } from "../../types";
-import ImageUpload from "../../components/ImageUpload";
 
 const { Title } = Typography;
-const { Search } = Input;
-const { TextArea } = Input;
+const { Search, TextArea } = Input;
+
+// Hàm tạo Slug tự động
+const createSlug = (str: string) => {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, "d")
+    .replace(/([^0-9a-z-\s])/g, "")
+    .replace(/(\s+)/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
 
 const BrandsPage: React.FC = () => {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -45,55 +59,63 @@ const BrandsPage: React.FC = () => {
       const response = await api.get("/brands");
       setBrands(response.data.data || []);
     } catch (error) {
-      console.error("Error loading brands:", error);
       message.error("Không thể tải danh sách thương hiệu");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      await api.delete(`/brands/${id}`);
-      message.success("Xóa thương hiệu thành công");
-      loadBrands();
-    } catch (error: any) {
-      message.error(
-        error.response?.data?.message || "Không thể xóa thương hiệu"
-      );
-    }
+  const normFile = (e: any) => {
+    if (Array.isArray(e)) return e;
+    return e?.fileList;
   };
 
   const handleSubmit = async (values: any) => {
+    const hide = message.loading("Đang lưu dữ liệu...", 0);
     try {
+      const formData = new FormData();
+      formData.append("name", values.name);
+      formData.append("slug", values.slug);
+      formData.append("description", values.description || "");
+
+      // Bốc file từ mảng fileList của Upload Antd
+      if (values.image && values.image.length > 0 && values.image[0].originFileObj) {
+        formData.append("image", values.image[0].originFileObj);
+      }
+
+      const config = { headers: { "Content-Type": "multipart/form-data" } };
+
       if (editingBrand) {
-        await api.put(`/brands/${editingBrand.id}`, values);
-        message.success("Cập nhật thương hiệu thành công");
+        await api.put(`/brands/${editingBrand.id}`, formData, config);
+        message.success("Cập nhật thành công");
       } else {
-        await api.post("/brands", values);
+        await api.post("/brands", formData, config);
         message.success("Tạo thương hiệu thành công");
       }
+
       setModalVisible(false);
-      setEditingBrand(null);
-      form.resetFields();
       loadBrands();
+      form.resetFields();
     } catch (error: any) {
-      message.error(
-        error.response?.data?.message ||
-          `Không thể ${editingBrand ? "cập nhật" : "tạo"} thương hiệu`
-      );
+      message.error(error.response?.data?.message || "Thao tác thất bại");
+    } finally {
+      hide();
     }
   };
 
   const handleEdit = (brand: Brand) => {
     setEditingBrand(brand);
-    form.setFieldsValue(brand);
-    setModalVisible(true);
-  };
-
-  const handleCreate = () => {
-    setEditingBrand(null);
-    form.resetFields();
+    // Hiển thị ảnh cũ trong khung Upload
+    const initialValues = {
+      ...brand,
+      image: brand.image_url ? [{
+        uid: '-1',
+        name: 'image.png',
+        status: 'done',
+        url: getImageUrl(brand.image_url),
+      }] : []
+    };
+    form.setFieldsValue(initialValues);
     setModalVisible(true);
   };
 
@@ -106,44 +128,24 @@ const BrandsPage: React.FC = () => {
       title: "Logo",
       dataIndex: "image_url",
       key: "image",
-      width: 80,
-      render: (imageUrl: string) => (
-        <Image
-          src={getImageUrl(imageUrl)}
-          alt="Brand"
-          width={50}
-          height={50}
-          className="object-cover rounded"
-          fallback="/placeholder-brand.jpg"
+      width: 100,
+      render: (url: string) => (
+        <Image 
+          src={getImageUrl(url)} 
+          width={50} 
+          height={50} 
+          style={{ objectFit: "cover", borderRadius: "4px" }} 
+          fallback="/placeholder.jpg" 
         />
       ),
     },
-    {
-      title: "Tên thương hiệu",
-      dataIndex: "name",
-      key: "name",
-    },
-    {
-      title: "Slug",
-      dataIndex: "slug",
-      key: "slug",
-    },
+    { title: "Tên thương hiệu", dataIndex: "name", key: "name" },
+    { title: "Slug", dataIndex: "slug", key: "slug" },
     {
       title: "Mô tả",
       dataIndex: "description",
       key: "description",
-      render: (description: string) =>
-        description ? (
-          <div className="max-w-xs truncate">{description}</div>
-        ) : (
-          "-"
-        ),
-    },
-    {
-      title: "Ngày tạo",
-      dataIndex: "created_at",
-      key: "created_at",
-      render: (date: string) => new Date(date).toLocaleDateString("vi-VN"),
+      render: (text: string) => text || "-",
     },
     {
       title: "Thao tác",
@@ -151,18 +153,16 @@ const BrandsPage: React.FC = () => {
       width: 120,
       render: (_: any, record: Brand) => (
         <Space>
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            size="small"
-            onClick={() => handleEdit(record)}
-          />
-          <Popconfirm
-            title="Bạn có chắc muốn xóa thương hiệu này?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Xóa"
-            cancelText="Hủy">
-            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+          <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
+          <Popconfirm 
+            title="Xóa thương hiệu này?" 
+            onConfirm={async () => {
+              await api.delete(`/brands/${record.id}`);
+              message.success("Đã xóa");
+              loadBrands();
+            }}
+          >
+            <Button type="text" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
       ),
@@ -171,17 +171,21 @@ const BrandsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Title level={2} className="!mb-0">
-          Quản lý thương hiệu
-        </Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+      {/* Header Area */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Title level={2} style={{ margin: 0 }}>Quản lý Thương hiệu</Title>
+        <Button 
+          type="primary" 
+          icon={<PlusOutlined />} 
+          onClick={() => { setEditingBrand(null); form.resetFields(); setModalVisible(true); }}
+        >
           Thêm thương hiệu
         </Button>
       </div>
 
       <Card>
-        <div className="flex items-center gap-4 mb-6">
+        {/* Search & Refresh Group */}
+        <div style={{ display: 'flex', gap: '16px', marginBottom: 24, alignItems: 'center' }}>
           <Search
             placeholder="Tìm kiếm thương hiệu..."
             allowClear
@@ -189,73 +193,73 @@ const BrandsPage: React.FC = () => {
             onSearch={setSearchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
-          <Button icon={<SearchOutlined />} onClick={loadBrands}>
+          <Button 
+            icon={<ReloadOutlined />} 
+            onClick={loadBrands}
+            loading={loading}
+          >
             Làm mới
           </Button>
         </div>
 
-        <Table
-          dataSource={filteredBrands}
-          columns={columns}
-          loading={loading}
-          rowKey="id"
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} của ${total} thương hiệu`,
-          }}
+        <Table 
+          dataSource={filteredBrands} 
+          columns={columns} 
+          loading={loading} 
+          rowKey="id" 
+          pagination={{ pageSize: 10 }}
         />
       </Card>
 
+      {/* Modal Form */}
       <Modal
-        title={editingBrand ? "Sửa thương hiệu" : "Thêm thương hiệu mới"}
+        title={editingBrand ? "Cập nhật thương hiệu" : "Thêm thương hiệu mới"}
         open={modalVisible}
-        onCancel={() => {
-          setModalVisible(false);
-          setEditingBrand(null);
-          form.resetFields();
-        }}
+        onCancel={() => setModalVisible(false)}
         footer={null}
-        width={600}>
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Form.Item
-            name="name"
-            label="Tên thương hiệu"
-            rules={[
-              { required: true, message: "Vui lòng nhập tên thương hiệu" },
-            ]}>
-            <Input placeholder="Nhập tên thương hiệu" />
+        destroyOnClose
+        width={600}
+      >
+        <Form 
+          form={form} 
+          layout="vertical" 
+          onFinish={handleSubmit} 
+          onValuesChange={(v) => v.name && form.setFieldsValue({ slug: createSlug(v.name) })}
+        >
+          <Form.Item name="name" label="Tên thương hiệu" rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}>
+            <Input placeholder="Ví dụ: Chanel" />
           </Form.Item>
-
-          <Form.Item
-            name="slug"
-            label="Slug (URL)"
-            rules={[{ required: true, message: "Vui lòng nhập slug" }]}>
-            <Input placeholder="thuong-hieu-moi" />
+          
+          <Form.Item name="slug" label="Slug (URL)" rules={[{ required: true }]}>
+            <Input placeholder="chanel-paris" />
           </Form.Item>
 
           <Form.Item name="description" label="Mô tả">
-            <TextArea rows={3} placeholder="Mô tả về thương hiệu" />
+            <TextArea rows={3} placeholder="Mô tả ngắn gọn về thương hiệu..." />
           </Form.Item>
 
-          <Form.Item name="image_url" label="Logo thương hiệu">
-            <ImageUpload />
+          <Form.Item
+            name="image"
+            label="Logo thương hiệu"
+            valuePropName="fileList"
+            getValueFromEvent={normFile}
+          >
+            <Upload
+              listType="picture-card"
+              maxCount={1}
+              beforeUpload={() => false}
+              accept="image/*"
+            >
+              <div>
+                <PlusOutlined />
+                <div style={{ marginTop: 8 }}>Chọn ảnh</div>
+              </div>
+            </Upload>
           </Form.Item>
 
-          <div className="flex justify-end gap-4">
-            <Button
-              onClick={() => {
-                setModalVisible(false);
-                setEditingBrand(null);
-                form.resetFields();
-              }}>
-              Hủy
-            </Button>
-            <Button type="primary" htmlType="submit">
-              {editingBrand ? "Cập nhật" : "Tạo mới"}
-            </Button>
+          <div style={{ textAlign: 'right', marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Button onClick={() => setModalVisible(false)}>Hủy</Button>
+            <Button type="primary" htmlType="submit">Lưu lại</Button>
           </div>
         </Form>
       </Modal>

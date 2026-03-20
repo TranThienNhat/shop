@@ -2,88 +2,104 @@ import { Request, Response } from "express";
 import Brand from "../models/BrandModel";
 import { IBrand } from "../interfaces/Brand";
 import { createSlug } from "../utils/slug";
+import fs from "fs";
+import path from "path";
 
-// --- GET ALL ---
+const deleteFile = (filePath: string | undefined | null) => {
+  if (!filePath) return;
+  const cleanedPath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
+  const fullPath = path.join(process.cwd(), cleanedPath); 
+  
+  if (fs.existsSync(fullPath)) {
+    fs.unlink(fullPath, (err) => {
+      if (err) console.error("Lỗi xóa file vật lý:", err);
+    });
+  }
+};
+
 export const index = async (req: Request, res: Response): Promise<Response> => {
   try {
     const brands = await Brand.findAll({ orderBy: "name", orderDir: "ASC" });
-    return res.json({
-      message: "Lấy danh sách thương hiệu thành công",
-      data: brands,
-    });
+    return res.json({ message: "Thành công", data: brands });
   } catch (error) {
     return res.status(500).json({ message: "Lỗi server" });
   }
 };
 
-// --- CREATE ---
-export const create = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const create = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { name } = req.body as IBrand;
+    const { name, slug, description } = req.body;
+    
+    if (!name) return res.status(400).json({ message: "Tên thương hiệu là bắt buộc" });
 
-    if (!name)
-      return res.status(400).json({ message: "Tên thương hiệu là bắt buộc" });
-
-    const slug = createSlug(name);
-
-    const exists = await Brand.findOne({ slug });
-    if (exists)
-      return res.status(409).json({ message: "Thương hiệu đã tồn tại" });
-
-    const newId = await Brand.create({ name, slug });
-
-    return res
-      .status(201)
-      .json({ message: "Tạo thương hiệu thành công", id: newId });
-  } catch (error) {
-    return res.status(500).json({ message: "Lỗi server" });
-  }
-};
-
-// --- UPDATE ---
-export const update = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
-  try {
-    const { id } = req.params;
-    const { name } = req.body as IBrand;
-
-    const dataToUpdate: Partial<IBrand> = {};
-
-    if (name) {
-      dataToUpdate.name = name;
-      dataToUpdate.slug = createSlug(name);
+    const finalSlug = slug || createSlug(name);
+    const exists = await Brand.findOne({ slug: finalSlug });
+    
+    if (exists) {
+      if (req.file) deleteFile(`uploads/brands/${req.file.filename}`);
+      return res.status(409).json({ message: "Slug đã tồn tại" });
     }
 
-    const success = await Brand.update(id, dataToUpdate);
-    if (!success)
-      return res.status(404).json({ message: "Không tìm thấy thương hiệu" });
+    const image_url = req.file ? `/uploads/brands/${req.file.filename}` : undefined;
 
-    return res.json({ message: "Cập nhật thành công" });
+    const newId = await Brand.create({
+      name,
+      slug: finalSlug,
+      description,
+      image_url
+    });
+
+    return res.status(201).json({ message: "Tạo thành công", id: newId, image_url });
   } catch (error) {
     return res.status(500).json({ message: "Lỗi server" });
   }
 };
 
-// --- DELETE ---
-export const remove = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const update = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { id } = req.params;
-    const success = await Brand.delete(id);
-    if (!success)
-      return res.status(404).json({ message: "Không tìm thấy thương hiệu" });
+    const { name, slug, description } = req.body;
 
-    return res.json({ message: "Xóa thành công" });
+    const currentBrand = await Brand.findById(id);
+    if (!currentBrand) {
+      if (req.file) deleteFile(`uploads/brands/${req.file.filename}`);
+      return res.status(404).json({ message: "Không tìm thấy" });
+    }
+
+    const dataToUpdate: Partial<IBrand> = {
+      name,
+      slug: slug || (name ? createSlug(name) : currentBrand.slug),
+      description
+    };
+
+    if (req.file) {
+      dataToUpdate.image_url = `/uploads/brands/${req.file.filename}`;
+      if (currentBrand.image_url) {
+        deleteFile(currentBrand.image_url);
+      }
+    }
+
+    await Brand.update(id, dataToUpdate);
+    return res.json({ message: "Cập nhật thành công", image_url: dataToUpdate.image_url });
   } catch (error) {
-    return res
-      .status(400)
-      .json({ message: "Không thể xóa thương hiệu đang có sản phẩm" });
+    return res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+export const remove = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { id } = req.params;
+    const brand = await Brand.findById(id);
+    
+    if (!brand) return res.status(404).json({ message: "Không tìm thấy" });
+
+    const success = await Brand.delete(id);
+    if (success) {
+      if (brand.image_url) deleteFile(brand.image_url);
+      return res.json({ message: "Xóa thành công" });
+    }
+    return res.status(400).json({ message: "Xóa thất bại" });
+  } catch (error) {
+    return res.status(400).json({ message: "Thương hiệu đang có sản phẩm, không thể xóa" });
   }
 };

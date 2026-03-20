@@ -1,12 +1,13 @@
 import { BaseModel } from "../core/BaseModel";
 import { IProduct, IProductVariant } from "../interfaces/Product";
+import { IGallery } from "../interfaces/Gallery";
 
 class ProductModel extends BaseModel<IProduct> {
   constructor() {
     super("products");
   }
 
-  // Lấy danh sách sản phẩm kèm giá thấp nhất từ variants
+  // 1. Lấy danh sách kèm ảnh chính và giá min/max
   async findAll(options: any = {}): Promise<any[]> {
     let sql = `
       SELECT p.*, 
@@ -14,7 +15,8 @@ class ProductModel extends BaseModel<IProduct> {
              MAX(pv.price) as max_price,
              SUM(pv.stock_qty) as total_stock,
              c.name as category_name,
-             b.name as brand_name
+             b.name as brand_name,
+             (SELECT image_url FROM product_galleries WHERE product_id = p.id AND is_main = 1 LIMIT 1) as thumb_image
       FROM products p
       LEFT JOIN product_variants pv ON p.id = pv.product_id
       LEFT JOIN categories c ON p.category_id = c.id
@@ -25,8 +27,10 @@ class ProductModel extends BaseModel<IProduct> {
 
     if (options.where) {
       Object.keys(options.where).forEach((key) => {
-        sql += ` AND p.${key} = ?`;
-        values.push(options.where[key]);
+        if (options.where[key] !== undefined && options.where[key] !== null) {
+          sql += ` AND p.${key} = ?`;
+          values.push(options.where[key]);
+        }
       });
     }
 
@@ -36,41 +40,44 @@ class ProductModel extends BaseModel<IProduct> {
       values.push(term, term);
     }
 
-    if (options.minPrice !== undefined) {
-      sql += ` AND pv.price >= ?`;
-      values.push(options.minPrice);
-    }
-
-    if (options.maxPrice !== undefined) {
-      sql += ` AND pv.price <= ?`;
-      values.push(options.maxPrice);
-    }
-
     sql += ` GROUP BY p.id`;
+
+    if (options.minPrice !== undefined || options.maxPrice !== undefined) {
+      sql += ` HAVING 1=1`;
+      if (options.minPrice !== undefined) {
+        sql += ` AND min_price >= ?`;
+        values.push(options.minPrice);
+      }
+      if (options.maxPrice !== undefined) {
+        sql += ` AND max_price <= ?`;
+        values.push(options.maxPrice);
+      }
+    }
 
     if (options.orderBy) {
       sql += ` ORDER BY p.${options.orderBy} ${options.orderDir || "ASC"}`;
     }
 
     if (options.limit) {
-      sql += ` LIMIT ${options.limit}`;
-      if (options.offset) {
-        sql += ` OFFSET ${options.offset}`;
-      }
+      sql += ` LIMIT ${Number(options.limit)}`;
+      if (options.offset) sql += ` OFFSET ${Number(options.offset)}`;
     }
 
     const [rows] = await this.db.query(sql, values);
     return rows as any[];
   }
 
+  // 2. GHI ĐÈ HÀM COUNT ĐỂ FIX LỖI SQL SYNTAX
   async count(options: any = {}): Promise<number> {
-    let sql = `SELECT COUNT(DISTINCT p.id) as count FROM products p LEFT JOIN product_variants pv ON p.id = pv.product_id WHERE 1=1`;
+    let sql = `SELECT COUNT(DISTINCT p.id) as total FROM products p WHERE 1=1`;
     const values: any[] = [];
 
     if (options.where) {
       Object.keys(options.where).forEach((key) => {
-        sql += ` AND p.${key} = ?`;
-        values.push(options.where[key]);
+        if (options.where[key] !== undefined && options.where[key] !== null) {
+          sql += ` AND p.${key} = ?`;
+          values.push(options.where[key]);
+        }
       });
     }
 
@@ -81,10 +88,10 @@ class ProductModel extends BaseModel<IProduct> {
     }
 
     const [rows]: any = await this.db.query(sql, values);
-    return rows[0].count;
+    return rows[0]?.total || 0;
   }
 
-  // Lấy sản phẩm kèm tất cả variants
+  // 3. Lấy chi tiết Full Variant + Gallery
   async findWithVariants(id: number | string): Promise<any | null> {
     const [products]: any = await this.db.query(
       `SELECT p.*, c.name as category_name, b.name as brand_name
@@ -96,51 +103,27 @@ class ProductModel extends BaseModel<IProduct> {
     );
     if (!products.length) return null;
 
-    const [variants] = await this.db.query(
-      `SELECT * FROM product_variants WHERE product_id = ?`,
-      [id]
-    );
+    const [variants] = await this.db.query(`SELECT * FROM product_variants WHERE product_id = ?`, [id]);
+    const [galleries] = await this.db.query(`SELECT * FROM product_galleries WHERE product_id = ? ORDER BY sort_order ASC`, [id]);
 
-    return { ...products[0], variants };
-  }
-
-  async findBySlugWithVariants(slug: string): Promise<any | null> {
-    const [products]: any = await this.db.query(
-      `SELECT p.*, c.name as category_name, b.name as brand_name
-       FROM products p
-       LEFT JOIN categories c ON p.category_id = c.id
-       LEFT JOIN brands b ON p.brand_id = b.id
-       WHERE p.slug = ?`,
-      [slug]
-    );
-    if (!products.length) return null;
-
-    const [variants] = await this.db.query(
-      `SELECT * FROM product_variants WHERE product_id = ?`,
-      [products[0].id]
-    );
-
-    return { ...products[0], variants };
+    return { ...products[0], variants, galleries };
   }
 }
 
 class ProductVariantModel extends BaseModel<IProductVariant> {
-  constructor() {
-    super("product_variants");
-  }
-
-  async findByProductId(productId: number): Promise<IProductVariant[]> {
-    const [rows] = await this.db.query(
-      `SELECT * FROM product_variants WHERE product_id = ?`,
-      [productId]
-    );
-    return rows as IProductVariant[];
-  }
-
+  constructor() { super("product_variants"); }
   async deleteByProductId(productId: number) {
     await this.db.query(`DELETE FROM product_variants WHERE product_id = ?`, [productId]);
   }
 }
 
+class GalleryModel extends BaseModel<IGallery> {
+  constructor() { super("product_galleries"); }
+  async deleteByProductId(productId: number) {
+    await this.db.query(`DELETE FROM product_galleries WHERE product_id = ?`, [productId]);
+  }
+}
+
 export const ProductVariant = new ProductVariantModel();
+export const Gallery = new GalleryModel();
 export default new ProductModel();

@@ -175,17 +175,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 />
               </Link>
             </Tooltip>
-
-            <Tooltip title="Thông báo">
-              <Badge count={5} size="small">
-                <Button
-                  type="text"
-                  icon={<BellOutlined />}
-                  className="text-charcoal hover:text-primary"
-                />
-              </Badge>
-            </Tooltip>
-
             <Dropdown
               menu={{ items: userMenuItems }}
               placement="bottomRight"

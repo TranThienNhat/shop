@@ -120,11 +120,13 @@ export const clearCart = async (req: Request, res: Response): Promise<Response> 
 
 export const removeItem = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { variantId } = req.params;
+    const { variantId } = req.params; // Lấy từ URL
     const { userId, sessionId } = getIdentity(req);
 
     const cart = await Cart.findCart(userId, sessionId);
-    if (cart) await Cart.removeItem(cart.id!, parseInt(variantId));
+    if (cart) {
+      await Cart.removeItem(cart.id!, parseInt(variantId));
+    }
 
     return res.json({ message: "Đã xóa sản phẩm" });
   } catch (error) {

@@ -3,6 +3,8 @@ export interface IOrder {
   user_id?: number;
   order_code: string;
   total_amount: number;
+  shipping_fee: number;
+  notes: string;
   discount_amount?: number;
   final_amount: number;
   coupon_id?: number;

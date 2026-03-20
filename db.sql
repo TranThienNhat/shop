@@ -6,10 +6,6 @@ use mypham_db;
 -- Đặc tính: Chuẩn hóa 3NF, Quản lý SKU, Bảo mật Coupon, Snapshot Giá, Đa hình ảnh.
 -- =================================================================================
 
-SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS `product_galleries`, `reviews`, `order_items`, `orders`, `cart_items`, `carts`, `coupon_user`, `coupons`, `product_variants`, `products`, `brands`, `categories`, `users`;
-SET FOREIGN_KEY_CHECKS = 1;
-
 -- 1. NHÓM QUẢN LÝ NGƯỜI DÙNG
 -- Nghiệp vụ: Lưu trữ định danh khách hàng và nhân viên (Admin/User).
 CREATE TABLE `users` (
@@ -25,18 +21,23 @@ CREATE TABLE `users` (
 
 -- 2. NHÓM PHÂN LOẠI & THƯƠNG HIỆU
 -- Nghiệp vụ: 'parent_id' cho phép tạo danh mục đa cấp (VD: Chăm sóc da > Kem dưỡng).
+-- 2. NHÓM PHÂN LOẠI & THƯƠNG HIỆU
 CREATE TABLE `categories` (
   `id` bigint PRIMARY KEY AUTO_INCREMENT,
   `parent_id` bigint DEFAULT NULL,
   `name` varchar(255) NOT NULL,
   `slug` varchar(255) NOT NULL UNIQUE,
+  `description` text DEFAULT NULL,
+  `image_url` varchar(255) DEFAULT NULL,
   FOREIGN KEY (`parent_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE `brands` (
   `id` bigint PRIMARY KEY AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
-  `slug` varchar(255) NOT NULL UNIQUE
+  `slug` varchar(255) NOT NULL UNIQUE,
+  `image_url` varchar(255) DEFAULT NULL, -- Logo thương hiệu (Cực kỳ quan trọng để làm slider logo)
+  `description` text -- Thêm mô tả ngắn về hãng nếu cần
 ) ENGINE=InnoDB;
 
 -- 3. NHÓM SẢN PHẨM & SKU (TRÁI TIM HỆ THỐNG)
@@ -132,6 +133,11 @@ CREATE TABLE `orders` (
   `id` bigint PRIMARY KEY AUTO_INCREMENT,
   `user_id` bigint NULL,
   `order_code` varchar(50) NOT NULL UNIQUE,
+  `shipping_name` varchar(255) NOT NULL,
+  `shipping_phone` varchar(20) NOT NULL,
+  `shipping_address` text NOT NULL,
+  `notes` text NULL,
+  `shipping_fee` decimal(15,2) NOT NULL,
   `total_amount` decimal(15,2) NOT NULL,
   `discount_amount` decimal(15,2) DEFAULT 0,
   `final_amount` decimal(15,2) NOT NULL,

@@ -1,12 +1,32 @@
 import { Router } from "express";
 import { index, create, update, remove } from "../controllers/brandController";
 import { authenticate, requireAdmin } from "../middlewares/authMiddleware";
+import { uploadBrand } from "../middlewares/uploadMiddleware";
 
 const router = Router();
 
+// Lấy danh sách: Ai cũng xem được (Public)
 router.get("/", index);
-router.post("/", authenticate, requireAdmin, create);
-router.put("/:id", authenticate, requireAdmin, update);
+
+// Tạo mới: Phải là Admin và xử lý 1 file ảnh với key là 'image'
+router.post(
+  "/", 
+  authenticate, 
+  requireAdmin, 
+  uploadBrand.single("image"), // Multer phải đứng sau Auth
+  create
+);
+
+// Cập nhật: Phải là Admin và xử lý 1 file ảnh nếu có (Optional)
+router.put(
+  "/:id", 
+  authenticate, 
+  requireAdmin, 
+  uploadBrand.single("image"), 
+  update
+);
+
+// Xóa: Phải là Admin
 router.delete("/:id", authenticate, requireAdmin, remove);
 
 export default router;

@@ -61,16 +61,20 @@ export interface User {
 }
 
 export interface Category {
-  id: number;
-  parent_id?: number;
+  id?: number;
+  parent_id?: number | null;
   name: string;
   slug: string;
+  description?: string;
+  image_url?: string;
 }
 
 export interface Brand {
   id: number;
   name: string;
   slug: string;
+  image_url:string;
+  description: string;
 }
 
 export interface Review {

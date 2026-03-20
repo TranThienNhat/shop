@@ -14,7 +14,8 @@ export const checkout = async (req: Request, res: Response): Promise<Response> =
 
     if (!userId) return res.status(401).json({ message: "Vui lòng đăng nhập để đặt hàng" });
 
-    const { shipping_info, payment_method } = req.body;
+    const { shipping_info, payment_method, notes } = req.body; 
+    
     if (!shipping_info?.name || !shipping_info?.phone || !shipping_info?.address) {
       return res.status(400).json({ message: "Thiếu thông tin giao hàng" });
     }
@@ -25,30 +26,61 @@ export const checkout = async (req: Request, res: Response): Promise<Response> =
     const cartInfo = await Cart.getCartWithCoupon(cart.id!);
     if (cartInfo.items.length === 0) return res.status(400).json({ message: "Giỏ hàng trống" });
 
+    // TÍNH PHÍ VẬN CHUYỂN
+    const shipping_fee = cartInfo.subtotal >= 500000 ? 0 : 30000;
+    const final_amount = cartInfo.total + shipping_fee; 
+
     const order_code = `ORD-${Date.now()}`;
 
+    // Tạo đơn hàng vào DB
     const orderId = await Order.createOrderTransaction(
       {
         user_id: userId,
         order_code,
         total_amount: cartInfo.subtotal,
         discount_amount: cartInfo.discount,
-        final_amount: cartInfo.total,
+        shipping_fee,
+        final_amount,
         coupon_id: cartInfo.couponId || undefined,
         shipping_name: shipping_info.name,
         shipping_phone: shipping_info.phone,
         shipping_address: shipping_info.address,
         shipping_email: authReq.user?.email,
+        notes: notes || null,                    
         payment_method,
       },
       cartInfo.items
     );
 
+    // Xóa giỏ hàng
     await Cart.clearCart(cart.id!);
 
-    return res.json({ message: "Đặt hàng thành công", id: orderId, order_id: orderId, order_code });
+    // --- LẤY DATA GỬI VỀ FRONTEND ---
+    // Chúng ta trả về một object chứa đầy đủ thông tin để trang Success hiển thị
+    return res.json({ 
+      message: "Đặt hàng thành công", 
+      order: {
+        id: orderId,
+        order_code,
+        shipping_info: {
+          name: shipping_info.name,
+          phone: shipping_info.phone,
+          address: shipping_info.address,
+          notes: notes || null
+        },
+        items: cartInfo.items, // Gửi danh sách SP để hiện ở trang Success
+        payment_method,
+        summary: {
+          subtotal: cartInfo.subtotal,
+          discount: cartInfo.discount,
+          shipping_fee,
+          final_amount
+        },
+        created_at: new Date()
+      }
+    });
   } catch (error) {
-    console.error(error);
+    console.error(">>> Checkout Error:", error);
     return res.status(500).json({ message: "Lỗi khi đặt hàng" });
   }
 };

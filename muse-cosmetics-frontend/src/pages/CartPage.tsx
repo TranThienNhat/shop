@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Row,
   Col,
@@ -8,15 +8,17 @@ import {
   InputNumber,
   Empty,
   Divider,
-  Space,
+  Input,
+  message,
+  Tag,
 } from "antd";
 import { Link, useNavigate } from "react-router-dom";
-import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, Ticket, X } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { getImageUrl, formatCurrency } from "../utils/helpers";
-import CouponSection from "../components/CouponSection";
 
-const { Title, Paragraph } = Typography;
+// Sửa lỗi TypeScript bằng cách bóc tách từ Typography chuẩn
+const { Title, Text, Paragraph } = Typography;
 
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
@@ -28,248 +30,217 @@ const CartPage: React.FC = () => {
     couponCode,
     updateQuantity,
     removeFromCart,
+    applyCoupon,
+    removeCoupon,
     isLoading,
   } = useCart();
 
-  const handleQuantityChange = (itemId: number, newQuantity: number) => {
+  const [couponInput, setCouponInput] = useState("");
+
+  const handleQuantityChange = (variantId: number, newQuantity: number) => {
     if (newQuantity > 0) {
-      updateQuantity(itemId, newQuantity);
+      updateQuantity(variantId, newQuantity);
     }
   };
 
-  const handleRemoveItem = (itemId: number) => {
-    removeFromCart(itemId);
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return message.warning("Nàng nhập mã giảm giá đã nhé!");
+    try {
+      await applyCoupon(couponInput);
+      setCouponInput("");
+    } catch (error) {
+      // Lỗi đã được xử lý trong Context
+    }
   };
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-4xl mx-auto px-4 lg:px-8 py-16">
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={
-              <div className="text-center">
-                <Title level={3} className="!text-charcoal !mb-2">
-                  Giỏ hàng trống
-                </Title>
-                <Paragraph className="text-gray mb-6">
-                  Bạn chưa có sản phẩm nào trong giỏ hàng. Hãy khám phá các sản
-                  phẩm tuyệt vời của chúng tôi!
-                </Paragraph>
-                <Link to="/products">
-                  <Button
-                    type="primary"
-                    size="large"
-                    icon={<ShoppingBag size={20} />}
-                    className="bg-primary border-primary">
-                    Tiếp tục mua sắm
-                  </Button>
-                </Link>
-              </div>
-            }
-          />
+      <div className="min-h-screen bg-[#fffafb] flex items-center justify-center">
+        <div className="text-center bg-white p-12 rounded-[40px] shadow-sm border border-rose-50 max-w-md">
+          <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShoppingBag size={32} className="text-rose-300" />
+          </div>
+          <Title level={3} className="!font-serif !text-charcoal">Túi đồ trống</Title>
+          <Paragraph className="text-gray-400 mb-8">Nàng chưa chọn được sản phẩm nào ưng ý sao?</Paragraph>
+          <Link to="/products">
+            <Button type="primary" size="large" className="bg-rose-400 border-none rounded-full h-12 px-10 font-medium shadow-lg shadow-rose-100">
+              MUA SẮM NGAY
+            </Button>
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
-        <Title level={1} className="!text-charcoal !mb-8 font-serif">
-          Giỏ hàng ({items.length} sản phẩm)
-        </Title>
+    <div className="min-h-screen bg-[#fffafb] py-12">
+      <div className="max-w-6xl mx-auto px-4 lg:px-8">
+        <div className="mb-10">
+          <Title level={2} className="!font-serif !text-charcoal !mb-2">Giỏ hàng của nàng</Title>
+          <Text className="text-gray-400 uppercase tracking-widest text-xs">Muse Cosmetics / Shopping Cart</Text>
+        </div>
 
-        <Row gutter={[24, 24]}>
-          {/* Cart Items */}
+        <Row gutter={[32, 32]}>
+          {/* CỘT TRÁI: DANH SÁCH SẢN PHẨM */}
           <Col xs={24} lg={16}>
-            <div className="space-y-6">
+            <div className="space-y-4">
               {items.map((item) => (
                 <Card
-                  key={item.id}
-                  className="border-2 border-gray-200 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl">
-                  <Row gutter={[16, 16]} align="middle">
-                    {/* Product Image */}
-                    <Col xs={24} sm={6}>
-                      <div className="aspect-square overflow-hidden rounded-lg bg-gray-50 border-2 border-gray-100 shadow-md">
-                        <img
-                          src={getImageUrl(item.image_url)}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              "/placeholder-product.jpg";
-                          }}
+                  key={item.variant_id}
+                  className="border-none shadow-sm rounded-[24px] hover:shadow-md transition-all overflow-hidden"
+                  bodyStyle={{ padding: "20px" }}
+                >
+                  <div className="flex flex-col sm:flex-row items-center gap-6">
+                    {/* Ảnh sản phẩm */}
+                    <div className="w-24 h-24 rounded-2xl overflow-hidden bg-rose-50/30 flex-shrink-0">
+                      <img
+                        src={getImageUrl(item.image_url || "")}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/200x200?text=Muse"; }}
+                      />
+                    </div>
+
+                    {/* Thông tin */}
+                    <div className="flex-1 text-center sm:text-left">
+                      <Link to={`/products/${item.product_id}`} className="text-charcoal font-serif text-lg hover:text-rose-400 block mb-1">
+                        {item.name}
+                      </Link>
+                      <Tag className="bg-rose-50 text-rose-400 border-none rounded-full px-3 py-0.5 text-[10px] uppercase font-bold">
+                        {item.variant_name || "Mặc định"}
+                      </Tag>
+                    </div>
+
+                    {/* Giá & Số lượng */}
+                    <div className="flex flex-col items-center sm:items-end gap-3">
+                      <Text className="text-rose-400 font-bold text-base">
+                        {formatCurrency(Number(item.price) * item.quantity)}
+                      </Text>
+                      
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center bg-gray-50 rounded-full p-1 border border-gray-100">
+                          <Button 
+                            type="text" shape="circle" size="small" icon={<Minus size={12} />} 
+                            onClick={() => handleQuantityChange(item.variant_id, item.quantity - 1)}
+                            disabled={item.quantity <= 1 || isLoading}
+                          />
+                          <InputNumber
+                            min={1} value={item.quantity} controls={false} readOnly
+                            className="w-8 border-0 bg-transparent text-center font-bold !text-charcoal text-xs"
+                          />
+                          <Button 
+                            type="text" shape="circle" size="small" icon={<Plus size={12} />} 
+                            onClick={() => handleQuantityChange(item.variant_id, item.quantity + 1)}
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <Button
+                          type="text"
+                          danger
+                          icon={<Trash2 size={18} strokeWidth={1.5} />}
+                          onClick={() => removeFromCart(item.variant_id)}
+                          disabled={isLoading}
+                          className="hover:bg-rose-50 rounded-full"
                         />
                       </div>
-                    </Col>
-
-                    {/* Product Info */}
-                    <Col xs={24} sm={18}>
-                      <div className="space-y-4">
-                        <div>
-                          <Title level={4} className="!text-charcoal !mb-1">
-                            {item.name}
-                          </Title>
-                          <div className="bg-primary/10 px-3 py-1 rounded-lg inline-block border border-primary/20">
-                            <p className="text-primary font-semibold text-lg mb-0">
-                              {formatCurrency(
-                                parseFloat(item.sale_price || item.price)
-                              )}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          {/* Quantity Controls */}
-                          <div className="flex items-center gap-3">
-                            <span className="text-charcoal font-medium">
-                              Số lượng:
-                            </span>
-                            <div className="flex items-center border-2 border-gray-300 rounded-lg shadow-sm bg-white">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<Minus size={14} />}
-                                onClick={() =>
-                                  handleQuantityChange(
-                                    item.id,
-                                    item.quantity - 1
-                                  )
-                                }
-                                disabled={item.quantity <= 1 || isLoading}
-                                className="border-0 hover:bg-gray-100"
-                              />
-                              <InputNumber
-                                min={1}
-                                max={99}
-                                value={item.quantity}
-                                onChange={(value) =>
-                                  handleQuantityChange(item.id, value || 1)
-                                }
-                                className="border-0 text-center font-semibold"
-                                style={{ width: "60px" }}
-                                controls={false}
-                                disabled={isLoading}
-                              />
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<Plus size={14} />}
-                                onClick={() =>
-                                  handleQuantityChange(
-                                    item.id,
-                                    item.quantity + 1
-                                  )
-                                }
-                                disabled={isLoading}
-                                className="border-0 hover:bg-gray-100"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Remove Button */}
-                          <Button
-                            type="text"
-                            danger
-                            icon={<Trash2 size={16} />}
-                            onClick={() => handleRemoveItem(item.id)}
-                            disabled={isLoading}
-                            className="text-red-500 hover:text-red-600">
-                            Xóa
-                          </Button>
-                        </div>
-
-                        {/* Subtotal */}
-                        <div className="text-right">
-                          <p className="text-charcoal font-semibold">
-                            Tạm tính:{" "}
-                            {formatCurrency(
-                              parseFloat(item.sale_price || item.price) *
-                                item.quantity
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </Col>
-                  </Row>
+                    </div>
+                  </div>
                 </Card>
               ))}
             </div>
-
-            {/* Continue Shopping */}
-            <div className="mt-6">
-              <Link to="/products">
-                <Button
-                  size="large"
-                  className="border-primary text-primary hover:bg-primary hover:text-white">
-                  ← Tiếp tục mua sắm
-                </Button>
-              </Link>
-            </div>
           </Col>
 
-          {/* Order Summary */}
+          {/* CỘT PHẢI: TÓM TẮT ĐƠN HÀNG & MÃ GIẢM GIÁ */}
           <Col xs={24} lg={8}>
-            <Card className="border-0 shadow-sm sticky top-24">
-              <Title level={4} className="!text-charcoal !mb-6">
-                Tóm tắt đơn hàng
-              </Title>
-
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-gray">Tạm tính:</span>
-                  <span className="text-charcoal font-medium">
-                    {formatCurrency(subtotal)}
-                  </span>
+            <div className="sticky top-24 space-y-6">
+              {/* Box Mã giảm giá */}
+              <Card className="border-none shadow-sm rounded-[24px] p-2">
+                <div className="flex items-center gap-2 mb-4 text-rose-400 font-medium">
+                  <Ticket size={18} />
+                  <span>Mã ưu đãi của nàng</span>
                 </div>
-
-                {/* Coupon Section */}
-                <CouponSection />
-
-                <div className="flex justify-between">
-                  <span className="text-gray">Phí vận chuyển:</span>
-                  <span className="text-charcoal font-medium">
-                    {subtotal >= 500000 ? "Miễn phí" : formatCurrency(30000)}
-                  </span>
-                </div>
-
-                <Divider className="my-4" />
-
-                <div className="flex justify-between text-lg">
-                  <span className="text-charcoal font-semibold">
-                    Tổng cộng:
-                  </span>
-                  <span className="text-primary font-bold">
-                    {formatCurrency(
-                      totalAmount + (subtotal >= 500000 ? 0 : 30000)
-                    )}
-                  </span>
-                </div>
-
-                {subtotal < 500000 && (
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <p className="text-blue-600 text-sm">
-                      Mua thêm {formatCurrency(500000 - subtotal)} để được miễn
-                      phí vận chuyển!
-                    </p>
+                {!couponCode ? (
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Nhập mã..." 
+                      className="rounded-full border-rose-100 h-10"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                    />
+                    <Button 
+                      type="primary" 
+                      className="bg-rose-400 border-none rounded-full h-10 font-medium"
+                      onClick={handleApplyCoupon}
+                      loading={isLoading}
+                    >
+                      Áp dụng
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-rose-50 p-3 rounded-2xl border border-dashed border-rose-200">
+                    <div>
+                      <Text type="secondary" className="text-[10px] block uppercase">Đang áp dụng</Text>
+                      <Text className="text-rose-500 font-bold tracking-widest">{couponCode}</Text>
+                    </div>
+                    <Button type="text" icon={<X size={16} />} onClick={removeCoupon} className="text-rose-400" />
                   </div>
                 )}
+              </Card>
 
-                <Button
-                  type="primary"
-                  size="large"
-                  className="w-full bg-primary border-primary mt-6"
-                  onClick={() => navigate("/checkout")}>
-                  Tiến hành thanh toán
-                </Button>
+              {/* Box Tổng tiền */}
+              <Card className="border-none shadow-sm rounded-[24px] p-4 bg-white">
+                <Title level={4} className="!font-serif !text-charcoal !mb-6 text-center">Tóm tắt túi đồ</Title>
+                
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <Text className="text-gray-400">Tạm tính</Text>
+                    <Text className="text-charcoal font-medium">{formatCurrency(subtotal)}</Text>
+                  </div>
+                  
+                  {discount > 0 && (
+                    <div className="flex justify-between">
+                      <Text className="text-rose-400">Giảm giá</Text>
+                      <Text className="text-rose-400 font-medium">-{formatCurrency(discount)}</Text>
+                    </div>
+                  )}
 
-                <div className="text-center text-xs text-gray mt-4">
-                  <p>Bảo mật thanh toán 100%</p>
-                  <p>Hỗ trợ đổi trả trong 7 ngày</p>
+                  <div className="flex justify-between">
+                    <Text className="text-gray-400">Phí vận chuyển</Text>
+                    <Text className="text-charcoal font-medium">
+                      {subtotal >= 500000 ? "Miễn phí" : formatCurrency(30000)}
+                    </Text>
+                  </div>
+
+                  <Divider className="my-4 border-rose-50" />
+
+                  <div className="flex justify-between items-end">
+                    <Text className="text-charcoal font-serif text-lg">Tổng cộng</Text>
+                    <Text className="text-2xl font-serif text-rose-500 font-bold">
+                      {formatCurrency(totalAmount + (subtotal >= 500000 ? 0 : 30000))}
+                    </Text>
+                  </div>
+
+                  {subtotal < 500000 && (
+                    <div className="bg-blue-50/50 p-3 rounded-2xl text-center">
+                      <Text className="text-blue-500 text-[11px] italic">
+                        Mua thêm {formatCurrency(500000 - subtotal)} để được Freeship nàng nhé!
+                      </Text>
+                    </div>
+                  )}
+
+                  <Button
+                    type="primary"
+                    size="large"
+                    block
+                    className="bg-rose-400 border-none h-14 rounded-full font-bold uppercase tracking-widest shadow-lg shadow-rose-100 hover:!bg-rose-500 mt-4"
+                    onClick={() => navigate("/checkout")}
+                    loading={isLoading}
+                  >
+                    Thanh toán ngay
+                  </Button>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            </div>
           </Col>
         </Row>
       </div>

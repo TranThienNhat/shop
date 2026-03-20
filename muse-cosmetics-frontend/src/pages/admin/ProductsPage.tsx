@@ -16,7 +16,7 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined,
+  SearchOutlined, // Đổi Reload sang Search icon cho giống file cũ
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import api from "../../utils/api";
@@ -27,7 +27,7 @@ const { Title } = Typography;
 const { Search } = Input;
 
 const ProductsPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<any[]>([]); 
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -39,7 +39,9 @@ const ProductsPage: React.FC = () => {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/products?limit=1000&status=all");
+      const response = await api.get("/products", {
+        params: { limit: 1000, status: "all" }
+      });
       setProducts(response.data.data || []);
     } catch (error) {
       console.error("Error loading products:", error);
@@ -68,27 +70,24 @@ const ProductsPage: React.FC = () => {
   const columns = [
     {
       title: "Hình ảnh",
-      key: "image",
-      width: 80,
-      render: (_: any, record: Product) => {
-        const mainImg = record.galleries?.find((g) => g.is_main === 1) || record.galleries?.[0];
-        return (
-          <Image
-            src={getImageUrl(mainImg?.image_url || "")}
-            alt="Product"
-            width={50}
-            height={50}
-            className="object-cover rounded"
-            fallback="/placeholder-product.jpg"
-          />
-        );
-      },
+      key: "thumb_image",
+      width: 80, // Thu nhỏ lại theo file cũ
+      render: (_: any, record: any) => (
+        <Image
+          src={getImageUrl(record.thumb_image)}
+          alt={record.name}
+          width={50}
+          height={50}
+          className="object-cover rounded"
+          fallback="/placeholder-product.jpg"
+        />
+      ),
     },
     {
       title: "Tên sản phẩm",
       dataIndex: "name",
       key: "name",
-      render: (name: string, record: Product) => (
+      render: (name: string, record: any) => (
         <Link to={`/admin/products/${record.id}/edit`} className="text-primary">
           {name}
         </Link>
@@ -98,20 +97,15 @@ const ProductsPage: React.FC = () => {
       title: "Giá (thấp nhất)",
       dataIndex: "min_price",
       key: "min_price",
-      render: (price: number) => (price != null ? formatCurrency(price) : "-"),
-      sorter: (a: Product, b: Product) => (a.min_price ?? 0) - (b.min_price ?? 0),
+      render: (price: any) => (price ? formatCurrency(Number(price)) : "-"),
+      sorter: (a: any, b: any) => Number(a.min_price || 0) - Number(b.min_price || 0),
     },
     {
       title: "Tồn kho",
       dataIndex: "total_stock",
       key: "total_stock",
-      render: (stock: number) => stock ?? 0,
-      sorter: (a: Product, b: Product) => (a.total_stock ?? 0) - (b.total_stock ?? 0),
-    },
-    {
-      title: "Biến thể",
-      key: "variants",
-      render: (_: any, record: Product) => record.variants?.length ?? 0,
+      render: (stock: any) => stock ?? 0,
+      sorter: (a: any, b: any) => Number(a.total_stock || 0) - Number(b.total_stock || 0),
     },
     {
       title: "Trạng thái",
@@ -127,16 +121,18 @@ const ProductsPage: React.FC = () => {
       title: "Thao tác",
       key: "actions",
       width: 120,
-      render: (_: any, record: Product) => (
+      render: (_: any, record: any) => (
         <Space>
           <Link to={`/admin/products/${record.id}/edit`}>
+            {/* Quay lại nút dạng text không nền */}
             <Button type="text" icon={<EditOutlined />} size="small" />
           </Link>
           <Popconfirm
             title="Bạn có chắc muốn xóa sản phẩm này?"
             onConfirm={() => handleDelete(record.id)}
             okText="Xóa"
-            cancelText="Hủy">
+            cancelText="Hủy"
+          >
             <Button type="text" danger icon={<DeleteOutlined />} size="small" />
           </Popconfirm>
         </Space>
@@ -170,7 +166,8 @@ const ProductsPage: React.FC = () => {
             placeholder="Trạng thái"
             style={{ width: 150 }}
             value={statusFilter}
-            onChange={setStatusFilter}>
+            onChange={setStatusFilter}
+          >
             <Select.Option value="all">Tất cả</Select.Option>
             <Select.Option value="active">Hiển thị</Select.Option>
             <Select.Option value="hidden">Ẩn</Select.Option>

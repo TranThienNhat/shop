@@ -10,7 +10,6 @@ import cartRoutes from "./routes/cartRoutes";
 import orderRoutes from "./routes/orderRoutes";
 import reviewRoutes from "./routes/reviewRoutes";
 import userRoutes from "./routes/userRoutes";
-import uploadRoutes from "./routes/uploadRoutes";
 import couponRoutes from "./routes/couponRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
 
@@ -45,9 +44,6 @@ app.use("/api/reviews", reviewRoutes);
 // 5. Admin (Quản lý người dùng, Dashboard)
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-
-// 6. Upload (Upload files)
-app.use("/api/upload", uploadRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

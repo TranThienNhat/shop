@@ -3,5 +3,6 @@ export interface ICategory {
   parent_id?: number | null;
   name: string;
   slug: string;
-  created_at?: Date;
+  description?: string;
+  image_url?: string;
 }
