@@ -72,10 +72,10 @@ const OrdersPage: React.FC = () => {
         comment: reviewData.comment || "Sản phẩm tuyệt vời, mình rất ưng ý!"
       });
       
-      message.success("Cảm ơn nàng đã chia sẻ cảm nhận ✨");
+      message.success("Cảm ơn bạn đã chia sẻ đánh giá ✨");
       setIsReviewModalOpen(false);
 
-      // CẬP NHẬT STATE TẠI CHỖ: Đánh dấu món này đã reviewed để nút biến mất ngay
+      // Cập nhật trạng thái đã đánh giá
       const updateReviewStatus = (items: any[]) => 
         items.map(item => item.variant_id === reviewData.variant_id ? { ...item, is_reviewed: true } : item);
 
@@ -85,59 +85,67 @@ const OrdersPage: React.FC = () => {
       }
 
     } catch (error: any) {
-      message.error(error.response?.data?.message || "Nàng đã đánh giá món này rồi ạ!");
+      message.error(error.response?.data?.message || "Bạn đã đánh giá sản phẩm này rồi!");
     } finally {
       setSubmitting(false);
     }
   };
 
   const getStatusTag = (status: string) => {
-    const config: Record<string, { color: string; text: string }> = {
-      pending: { color: "warning", text: "Chờ xác nhận" },
-      processing: { color: "processing", text: "Đang chuẩn bị" },
-      shipped: { color: "cyan", text: "Đang giao hàng" },
-      completed: { color: "success", text: "Đã hoàn tất" },
-      cancelled: { color: "error", text: "Đã hủy" },
+    const config: Record<string, { color: string; text: string; bg: string }> = {
+      pending: { color: "text-yellow-600", bg: "bg-yellow-50", text: "Chờ xác nhận" },
+      processing: { color: "text-blue-600", bg: "bg-blue-50", text: "Đang xử lý" },
+      shipped: { color: "text-cyan-600", bg: "bg-cyan-50", text: "Đang giao hàng" },
+      completed: { color: "text-green-600", bg: "bg-green-50", text: "Đã hoàn tất" },
+      cancelled: { color: "text-red-600", bg: "bg-red-50", text: "Đã hủy" },
     };
     const s = config[status] || config.pending;
-    return <Tag color={s.color} className="rounded-full px-3 border-none uppercase text-[10px] font-bold">{s.text}</Tag>;
+    return <span className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${s.bg} ${s.color}`}>{s.text}</span>;
   };
 
   if (!authLoading && !isAuthenticated) return <Navigate to="/login" replace />;
-  if (authLoading || loading) return <div className="min-h-screen flex items-center justify-center bg-[#fffafb]"><Spin size="large" /></div>;
+  if (authLoading || loading) return <div className="min-h-screen flex items-center justify-center bg-background"><Spin size="large" className="text-primary" /></div>;
 
   return (
-    <div className="min-h-screen bg-[#fffafb] py-12">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-background py-12">
+      <div className="max-w-4xl mx-auto px-4 lg:px-8">
+        
+        {/* Header */}
         <div className="text-center mb-12">
-          <Title level={2} className="!font-serif !text-charcoal !mb-2 uppercase tracking-widest">Đơn hàng của nàng</Title>
-          <div className="w-12 h-1 bg-rose-200 mx-auto mb-4 rounded-full"></div>
-          <Text className="text-gray-400 italic">Nơi lưu giữ những món quà xinh đẹp nàng đã chọn cho bản thân ✨</Text>
+          <Title level={2} className="!font-serif !text-charcoal !mb-2">Đơn hàng của bạn</Title>
+          <div className="w-12 h-1 bg-primary/30 mx-auto mb-4 rounded-full"></div>
+          <Text className="text-gray italic">Quản lý và theo dõi lịch sử mua sắm của bạn.</Text>
         </div>
 
         {orders.length === 0 ? (
-          <Empty description="Nàng chưa có đơn hàng nào" className="bg-white p-16 rounded-[40px] shadow-sm border border-rose-50">
+          <Empty 
+            description={<span className="text-gray text-base">Bạn chưa có đơn hàng nào</span>} 
+            className="bg-white p-12 md:p-16 rounded-2xl shadow-sm border border-gray/10"
+          >
             <Link to="/products">
-              <Button type="primary" className="bg-rose-400 border-none rounded-full px-10 h-12 font-bold tracking-widest hover:!bg-rose-500 transition-all">MUA SẮM NGAY</Button>
+              <Button type="primary" size="large" className="bg-primary border-primary rounded-lg px-10 h-12 font-medium hover:!bg-primary/90 transition-all mt-4">
+                Mua sắm ngay
+              </Button>
             </Link>
           </Empty>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {orders.map((order) => (
               <Card 
                 key={order.id} 
-                className="border-none shadow-sm rounded-[32px] overflow-hidden hover:shadow-md transition-all cursor-pointer group"
+                className="border border-gray/10 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all cursor-pointer group bg-white"
                 onClick={() => openDetail(order)}
+                bodyStyle={{ padding: '24px' }}
               >
-                <div className="flex justify-between items-center mb-6 border-b border-rose-50 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-300 group-hover:bg-rose-100 transition-colors">
-                      <ShoppingBag size={18} />
+                <div className="flex justify-between items-start md:items-center mb-6 border-b border-gray/10 pb-4 flex-col md:flex-row gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                      <ShoppingBag size={20} />
                     </div>
                     <div>
-                      <Text strong className="block text-charcoal">{order.order_code}</Text>
-                      <Text className="text-[10px] text-gray-400 flex items-center gap-1 uppercase tracking-tighter">
-                        <Clock size={12} /> {new Date(order.created_at).toLocaleDateString("vi-VN")}
+                      <Text strong className="block text-charcoal text-base">{order.order_code}</Text>
+                      <Text className="text-xs text-gray flex items-center gap-1 mt-1">
+                        <Clock size={14} /> {new Date(order.created_at).toLocaleDateString("vi-VN")}
                       </Text>
                     </div>
                   </div>
@@ -147,31 +155,33 @@ const OrdersPage: React.FC = () => {
                 <div className="space-y-4">
                   {order.items.slice(0, 1).map((item: any) => (
                     <div key={item.id} className="flex gap-4 items-center">
-                      <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-50 flex-shrink-0 border border-rose-50 p-1">
-                        <img src={getImageUrl(item.image_url)} alt={item.name} className="w-full h-full object-cover rounded-xl" />
+                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray/5 flex-shrink-0 border border-gray/10 p-1">
+                        <img src={getImageUrl(item.image_url)} alt={item.name} className="w-full h-full object-cover rounded-md" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <Text strong className="block text-sm text-charcoal truncate">{item.name}</Text>
-                        <Text type="secondary" className="text-[11px] uppercase tracking-widest">{item.variant_name}</Text>
-                        <div className="mt-1"><Text className="text-xs text-gray-400">Số lượng: {item.quantity}</Text></div>
+                        <Text strong className="block text-sm text-charcoal truncate mb-1">{item.name}</Text>
+                        <Text type="secondary" className="text-[11px] uppercase tracking-wider bg-background border border-gray/10 px-2 py-0.5 rounded-md inline-block mb-1">{item.variant_name}</Text>
+                        <div className="mt-1"><Text className="text-xs text-gray">Số lượng: {item.quantity}</Text></div>
                       </div>
                       <div className="text-right">
-                         <Text className="block font-serif text-lg text-rose-500 font-bold">{formatCurrency(Number(item.price) * item.quantity)}</Text>
+                         <Text className="block font-medium text-base text-primary">{formatCurrency(Number(item.price) * item.quantity)}</Text>
                       </div>
                     </div>
                   ))}
                   {order.items.length > 1 && (
-                    <Text type="secondary" className="text-[11px] italic pl-24 text-rose-300">+ và {order.items.length - 1} món quà khác...</Text>
+                    <Text type="secondary" className="text-xs italic pl-24 text-gray">
+                      + và {order.items.length - 1} sản phẩm khác...
+                    </Text>
                   )}
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-rose-50 flex justify-between items-end">
-                  <Text className="text-rose-300 flex items-center text-xs font-medium hover:gap-2 transition-all">
-                    Xem chi tiết <ChevronRight size={14} />
+                <div className="mt-6 pt-4 border-t border-gray/10 flex justify-between items-end">
+                  <Text className="text-primary flex items-center text-sm font-medium group-hover:gap-2 transition-all">
+                    Xem chi tiết <ChevronRight size={16} />
                   </Text>
                   <div className="text-right">
-                    <Text className="text-gray-400 text-[10px] uppercase tracking-widest block mb-1">Tổng thanh toán</Text>
-                    <Text className="text-2xl font-serif text-rose-500 font-bold leading-none">{formatCurrency(Number(order.final_amount))}</Text>
+                    <Text className="text-gray text-[10px] uppercase tracking-widest block mb-1">Tổng thanh toán</Text>
+                    <Text className="text-xl font-serif text-primary font-bold leading-none">{formatCurrency(Number(order.final_amount))}</Text>
                   </div>
                 </div>
               </Card>
@@ -188,87 +198,87 @@ const OrdersPage: React.FC = () => {
         width={750}
         centered
         closeIcon={null}
-        styles={{ content: { borderRadius: "40px", padding: "0", overflow: "hidden" } }}
+        styles={{ content: { borderRadius: "16px", padding: "0", overflow: "hidden" } }}
       >
         {selectedOrder && (
           <div>
             {/* Header Modal */}
-            <div className="bg-rose-50/50 p-10 border-b border-rose-100 flex justify-between items-center">
+            <div className="bg-background p-6 md:p-8 border-b border-gray/10 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
-                        <Package size={24} className="text-rose-400" />
-                        <Title level={3} className="!m-0 !font-serif">Thông tin đơn hàng</Title>
+                        <Package size={22} className="text-primary" />
+                        <Title level={3} className="!m-0 !font-serif text-charcoal">Chi tiết đơn hàng</Title>
                     </div>
-                    <Text type="secondary" className="text-[11px] uppercase tracking-[0.3em] font-bold">{selectedOrder.order_code}</Text>
+                    <Text type="secondary" className="text-xs uppercase tracking-widest font-medium text-gray">{selectedOrder.order_code}</Text>
                 </div>
-                {getStatusTag(selectedOrder.status)}
+                <div>{getStatusTag(selectedOrder.status)}</div>
             </div>
 
-            <div className="p-10">
-              <Row gutter={[48, 32]} className="mb-10">
-                <Col span={12}>
-                    <div className="flex items-center gap-2 mb-4">
-                        <MapPin size={16} className="text-rose-400" />
-                        <Text strong className="text-[11px] text-rose-400 uppercase tracking-widest">Địa chỉ nhận quà</Text>
+            <div className="p-6 md:p-8">
+              <Row gutter={[24, 24]} className="mb-8">
+                <Col xs={24} md={12}>
+                    <div className="flex items-center gap-2 mb-3">
+                        <MapPin size={16} className="text-gray" />
+                        <Text strong className="text-xs text-charcoal uppercase tracking-widest">Địa chỉ giao hàng</Text>
                     </div>
-                    <div className="bg-gray-50/50 p-6 rounded-[24px] border border-gray-100 space-y-2">
-                        <Text strong className="block text-charcoal text-base">{selectedOrder.shipping_name}</Text>
-                        <Text className="block text-gray-500 flex items-center gap-2"><Phone size={14}/> {selectedOrder.shipping_phone}</Text>
-                        <Text className="block text-gray-400 text-xs italic leading-relaxed">{selectedOrder.shipping_address}</Text>
+                    <div className="bg-background p-5 rounded-xl border border-gray/10 space-y-2 h-full">
+                        <Text strong className="block text-charcoal text-sm">{selectedOrder.shipping_name}</Text>
+                        <Text className="text-gray flex items-center gap-2 text-sm"><Phone size={14}/> {selectedOrder.shipping_phone}</Text>
+                        <Text className="block text-gray text-sm leading-relaxed">{selectedOrder.shipping_address}</Text>
                     </div>
                 </Col>
-                <Col span={12}>
-                    <div className="flex items-center gap-2 mb-4">
-                        <CreditCard size={16} className="text-rose-400" />
-                        <Text strong className="text-[11px] text-rose-400 uppercase tracking-widest">Hình thức thanh toán</Text>
+                <Col xs={24} md={12}>
+                    <div className="flex items-center gap-2 mb-3">
+                        <CreditCard size={16} className="text-gray" />
+                        <Text strong className="text-xs text-charcoal uppercase tracking-widest">Thanh toán</Text>
                     </div>
-                    <div className="bg-rose-50/20 p-6 rounded-[24px] border border-rose-50">
-                        <Text strong className="block text-charcoal mb-1">
-                          {selectedOrder.payment_method === 'cod' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản Muse'}
+                    <div className="bg-background p-5 rounded-xl border border-gray/10 h-full flex flex-col justify-center">
+                        <Text strong className="block text-charcoal mb-1 text-sm">
+                          {selectedOrder.payment_method === 'cod' ? 'Chuyển khoản' : 'Thanh toán khi nhận hàng (COD)'}
                         </Text>
-                        <Text type="secondary" className="block text-[11px] italic">
-                          {selectedOrder.status === 'completed' ? 'Giao dịch đã thành công ✨' : 'Nàng chuẩn bị sẵn tiền mặt khi shipper tới nhé!'}
+                        <Text type="secondary" className="block text-xs text-gray">
+                          {selectedOrder.status === 'completed' ? 'Giao dịch đã hoàn tất.' : 'Vui lòng chuẩn bị tiền mặt khi nhận hàng.'}
                         </Text>
                     </div>
                 </Col>
               </Row>
 
-              <Divider className="border-rose-50" />
+              <Divider className="border-gray/10" />
 
               {/* Danh sách sản phẩm trong Modal */}
-              <div className="my-10 space-y-6">
-                <Title level={5} className="!font-serif !mb-6 text-charcoal flex items-center gap-2">
-                    <Star size={18} fill="#fb7185" className="text-rose-400" /> Các món nàng đã chọn
+              <div className="my-8 space-y-4">
+                <Title level={5} className="!font-serif !mb-4 text-charcoal flex items-center gap-2">
+                    <ShoppingBag size={18} className="text-primary" /> Sản phẩm đã mua
                 </Title>
                 {selectedOrder.items.map((item: any) => (
-                  <div key={item.id} className="flex gap-5 items-center bg-white p-4 rounded-3xl border border-rose-50 hover:border-rose-200 transition-all">
-                    <div className="w-16 h-16 rounded-2xl overflow-hidden bg-rose-50/30 flex-shrink-0">
+                  <div key={item.id} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-white p-4 rounded-xl border border-gray/10 hover:border-primary/30 transition-colors">
+                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray/5 flex-shrink-0 border border-gray/10">
                       <img src={getImageUrl(item.image_url)} alt={item.name} className="w-full h-full object-cover" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <Text strong className="block text-sm truncate">{item.name}</Text>
-                      <Tag className="border-none bg-rose-50 text-rose-400 text-[10px] rounded-full uppercase font-bold">
+                    <div className="flex-1 min-w-0 w-full">
+                      <Text strong className="block text-sm text-charcoal truncate mb-1">{item.name}</Text>
+                      <span className="border border-gray/10 bg-background text-gray text-[10px] rounded-md px-2 py-0.5 uppercase font-medium inline-block mb-1">
                         {item.variant_name}
-                      </Tag>
-                      <Text type="secondary" className="text-[11px] ml-2">x{item.quantity}</Text>
+                      </span>
+                      <Text type="secondary" className="text-xs block">SL: {item.quantity}</Text>
                     </div>
                     
-                    <div className="text-right flex flex-col items-end gap-2">
-                        <Text className="font-bold text-charcoal">{formatCurrency(Number(item.price) * item.quantity)}</Text>
+                    <div className="text-left sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0 gap-3">
+                        <Text className="font-medium text-charcoal text-base">{formatCurrency(Number(item.price) * item.quantity)}</Text>
                         
-                        {/* LOGIC NÚT ĐÁNH GIÁ: Nếu completed và chưa reviewed thì mới hiện nút */}
+                        {/* Nút đánh giá */}
                         {selectedOrder.status === 'completed' && (
                             item.is_reviewed ? (
-                                <div className="flex items-center gap-1 text-[10px] text-green-400 font-bold uppercase tracking-tighter bg-green-50 px-3 py-1 rounded-full">
-                                    <CheckCircle size={12} /> Đã đánh giá
+                                <div className="flex items-center gap-1 text-[11px] text-green-600 font-medium bg-green-50 px-2 py-1 rounded-md border border-green-100">
+                                    <CheckCircle size={14} /> Đã đánh giá
                                 </div>
                             ) : (
                                 <Button 
                                     size="small" 
-                                    className="bg-rose-400 border-none text-white text-[10px] rounded-full px-4 font-bold uppercase tracking-widest hover:!bg-rose-500 h-8 shadow-sm"
+                                    className="bg-transparent border-primary text-primary text-xs rounded-lg px-4 hover:!bg-primary hover:!text-white transition-colors"
                                     onClick={() => handleOpenReview(item, selectedOrder.id)}
                                 >
-                                    Viết đánh giá
+                                    Đánh giá
                                 </Button>
                             )
                         )}
@@ -278,33 +288,33 @@ const OrdersPage: React.FC = () => {
               </div>
 
               {/* Tổng kết tiền */}
-              <div className="bg-gray-50/80 p-8 rounded-[32px] border border-gray-100">
+              <div className="bg-background p-6 md:p-8 rounded-2xl border border-gray/10">
                   <div className="space-y-3">
-                      <div className="flex justify-between text-xs text-gray-400">
-                        <Text>Giá trị giỏ quà</Text>
+                      <div className="flex justify-between text-sm text-gray">
+                        <Text>Tạm tính</Text>
                         <Text>{formatCurrency(Number(selectedOrder.total_amount))}</Text>
                       </div>
-                      <div className="flex justify-between text-xs text-gray-400">
+                      <div className="flex justify-between text-sm text-gray">
                         <Text>Phí vận chuyển</Text>
                         <Text>{formatCurrency(Number(selectedOrder.shipping_fee))}</Text>
                       </div>
                       {Number(selectedOrder.discount_amount) > 0 && (
-                        <div className="flex justify-between text-xs text-rose-400 font-medium">
-                            <Text>Ưu đãi từ Muse</Text>
+                        <div className="flex justify-between text-sm text-primary font-medium">
+                            <Text>Giảm giá</Text>
                             <Text>-{formatCurrency(Number(selectedOrder.discount_amount))}</Text>
                         </div>
                       )}
-                      <Divider className="my-4 border-gray-200" />
+                      <Divider className="my-4 border-gray/10" />
                       <div className="flex justify-between items-end">
-                        <Text strong className="text-lg font-serif text-charcoal">Tổng thanh toán</Text>
-                        <Text className="text-3xl font-serif text-rose-500 font-bold">{formatCurrency(Number(selectedOrder.final_amount))}</Text>
+                        <Text strong className="text-base text-charcoal">Tổng cộng</Text>
+                        <Text className="text-2xl font-serif text-primary font-bold">{formatCurrency(Number(selectedOrder.final_amount))}</Text>
                       </div>
                   </div>
               </div>
               
-              <div className="text-center mt-8">
-                  <Button type="text" onClick={() => setIsModalOpen(false)} className="text-gray-300 hover:text-rose-400 uppercase text-[10px] tracking-[0.3em] font-bold">
-                    Đóng cửa sổ
+              <div className="text-center mt-6">
+                  <Button type="text" onClick={() => setIsModalOpen(false)} className="text-gray hover:text-charcoal font-medium">
+                    Đóng
                   </Button>
               </div>
             </div>
@@ -312,35 +322,35 @@ const OrdersPage: React.FC = () => {
         )}
       </Modal>
 
-      {/* MODAL VIẾT ĐÁNH GIÁ (MUSE STYLE) */}
+      {/* MODAL VIẾT ĐÁNH GIÁ */}
       <Modal
         open={isReviewModalOpen}
         onCancel={() => setIsReviewModalOpen(false)}
         footer={null}
         centered
-        width={420}
-        styles={{ content: { borderRadius: "48px", padding: "40px" } }}
+        width={450}
+        styles={{ content: { borderRadius: "16px", padding: "32px" } }}
       >
         <div className="text-center">
-            <div className="w-24 h-24 mx-auto rounded-[32px] overflow-hidden mb-6 bg-rose-50 p-2 shadow-inner shadow-rose-100/50">
-                <img src={getImageUrl(reviewData.image_url)} className="w-full h-full object-cover rounded-[24px]" alt="p" />
+            <div className="w-20 h-20 mx-auto rounded-lg overflow-hidden mb-5 bg-gray/5 border border-gray/10">
+                <img src={getImageUrl(reviewData.image_url)} className="w-full h-full object-cover" alt="Product" />
             </div>
-            <Title level={3} className="!font-serif !mb-2">Nàng thấy sao?</Title>
-            <Text type="secondary" className="text-[11px] uppercase tracking-[0.2em] block mb-8 font-bold text-rose-300">{reviewData.name}</Text>
+            <Title level={4} className="!font-serif !mb-1 text-charcoal">Đánh giá sản phẩm</Title>
+            <Text className="text-xs block mb-6 text-gray line-clamp-1 px-4">{reviewData.name}</Text>
             
-            <div className="mb-10">
+            <div className="mb-8">
                 <Rate 
                     value={reviewData.rating} 
                     onChange={(val) => setReviewData({...reviewData, rating: val})}
-                    className="text-rose-400 text-3xl mb-2" 
+                    className="text-yellow-400 text-3xl mb-2" 
                 />
-                <div className="text-[10px] text-gray-300 uppercase tracking-widest">Chạm để chấm điểm nàng nhé</div>
+                <div className="text-xs text-gray mt-2">Mức độ hài lòng của bạn</div>
             </div>
 
             <Input.TextArea 
                 rows={4} 
-                placeholder="Chia sẻ cho Muse biết cảm nhận của nàng về món quà này nhé..." 
-                className="rounded-[24px] border-rose-100 p-6 mb-8 focus:border-rose-300 focus:shadow-none bg-rose-50/10 text-gray-600 italic"
+                placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này..." 
+                className="rounded-lg border-gray/20 p-4 mb-6 focus:border-primary focus:shadow-none text-base bg-background"
                 value={reviewData.comment}
                 onChange={(e) => setReviewData({...reviewData, comment: e.target.value})}
             />
@@ -350,10 +360,10 @@ const OrdersPage: React.FC = () => {
                 block 
                 size="large"
                 loading={submitting}
-                className="bg-rose-400 border-none h-16 rounded-full font-bold uppercase tracking-[0.2em] shadow-xl shadow-rose-100 hover:!bg-rose-500 transition-all hover:-translate-y-1"
+                className="bg-primary border-primary h-12 rounded-lg font-medium text-base hover:!bg-primary/90 transition-all"
                 onClick={handleSubmitReview}
             >
-                Gửi lời yêu thương
+                Gửi đánh giá
             </Button>
         </div>
       </Modal>

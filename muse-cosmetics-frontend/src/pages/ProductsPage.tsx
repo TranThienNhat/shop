@@ -20,7 +20,11 @@ const ProductsPage: React.FC = () => {
   // Filter States
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(12);
+  
+  // State hiển thị UI khi đang kéo chuột
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000000]);
+  // State CHÍNH THỨC dùng để gọi API (khi đã thả chuột)
+  const [appliedPriceRange, setAppliedPriceRange] = useState<[number, number]>([0, 5000000]);
 
   // 1. Khởi tạo dữ liệu (Danh mục & Thương hiệu)
   useEffect(() => {
@@ -46,7 +50,7 @@ const ProductsPage: React.FC = () => {
     // Đồng bộ Page hiện tại với URL
     const page = searchParams.get("page");
     if (page) setCurrentPage(Number(page));
-  }, [searchParams, priceRange]);
+  }, [searchParams, appliedPriceRange]); // SỬ DỤNG appliedPriceRange THAY VÌ priceRange
 
   const loadProducts = async () => {
     try {
@@ -54,8 +58,8 @@ const ProductsPage: React.FC = () => {
       const params: any = {
         page: searchParams.get("page") || 1,
         limit: pageSize,
-        min_price: priceRange[0],
-        max_price: priceRange[1],
+        min_price: appliedPriceRange[0], // Lấy giá từ state đã xác nhận
+        max_price: appliedPriceRange[1], // Lấy giá từ state đã xác nhận
         search: searchParams.get("search") || undefined,
         category_id: searchParams.get("category_id") || undefined,
         brand_id: searchParams.get("brand_id") || undefined,
@@ -85,50 +89,57 @@ const ProductsPage: React.FC = () => {
 
   const clearFilters = () => {
     setPriceRange([0, 5000000]);
+    setAppliedPriceRange([0, 5000000]); // Reset cả state gọi API
     setSearchParams({});
     setCurrentPage(1);
   };
 
   return (
-    <div className="bg-[#fffafb] min-h-screen pb-20">
+    <div className="bg-background min-h-screen pb-20">
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-10">
         
         {/* Breadcrumb & Header */}
-        <Breadcrumb className="mb-6 uppercase tracking-widest text-[10px]" items={[{ title: <Link to="/">Trang chủ</Link> }, { title: "Sản phẩm" }]} />
+        <Breadcrumb 
+          className="mb-6 uppercase tracking-widest text-[10px] text-gray" 
+          items={[
+            { title: <Link to="/" className="hover:text-primary transition-colors">Trang chủ</Link> }, 
+            { title: "Cửa hàng" }
+          ]} 
+        />
         
         <div className="mb-12 text-center md:text-left">
-          <Title level={1} className="!text-charcoal !mb-2 !font-serif !text-4xl uppercase tracking-wider">Cửa hàng của Muse</Title>
-          <Text className="text-gray-400 italic font-serif">Nơi nàng tìm thấy bản sao hoàn hảo nhất của chính mình ✨</Text>
+          <Title level={1} className="!text-charcoal !mb-3 !font-serif !text-4xl tracking-tight">Bộ sưu tập Muse</Title>
+          <Text className="text-gray italic font-serif text-base">Khám phá những sản phẩm làm đẹp cao cấp được tuyển chọn kỹ lưỡng.</Text>
         </div>
 
         <Row gutter={[32, 32]}>
           {/* SIDEBAR BỘ LỌC */}
           <Col xs={24} lg={6}>
-            <div className="bg-white p-8 rounded-[40px] shadow-sm space-y-8 sticky top-28 border border-rose-50">
-              <div className="flex items-center justify-between border-b border-rose-50 pb-4">
-                <Title level={4} className="!mb-0 !font-serif flex items-center gap-2">
-                   <Filter size={18} className="text-rose-400" /> Bộ lọc
+            <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm space-y-8 sticky top-28 border border-gray/10">
+              <div className="flex items-center justify-between border-b border-gray/10 pb-4">
+                <Title level={4} className="!mb-0 !font-serif flex items-center gap-2 text-charcoal">
+                   <Filter size={18} className="text-primary" /> Bộ lọc
                 </Title>
-                <Button type="link" onClick={clearFilters} className="text-rose-300 hover:text-rose-500 p-0 flex items-center gap-1 text-xs">
+                <Button type="link" onClick={clearFilters} className="text-gray hover:text-primary p-0 flex items-center gap-1 text-xs transition-colors">
                    <RefreshCcw size={12} /> Làm mới
                 </Button>
               </div>
 
               {/* Tìm kiếm */}
               <div>
-                <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-[0.2em] text-gray-400">Tìm kiếm sản phẩm</label>
+                <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-widest text-gray">Tìm kiếm sản phẩm</label>
                 <Input 
-                  placeholder="Nàng đang tìm gì..." 
-                  prefix={<Search size={14} className="text-rose-200" />} 
-                  className="rounded-2xl border-rose-50 bg-rose-50/20 h-11 focus:border-rose-300"
+                  placeholder="Nhập tên sản phẩm..." 
+                  prefix={<Search size={14} className="text-gray" />} 
+                  className="rounded-lg border-gray/20 bg-background h-11 focus:border-primary focus:shadow-none"
                   value={searchParams.get("search") || ""}
                   onChange={(e) => handleFilterChange("search", e.target.value)}
                 />
               </div>
 
-              {/* Lọc theo Thương hiệu (Nhận brand_id từ URL) */}
+              {/* Lọc theo Thương hiệu */}
               <div>
-                <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-[0.2em] text-gray-400">Thương hiệu</label>
+                <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-widest text-gray">Thương hiệu</label>
                 <Select 
                   placeholder="Tất cả thương hiệu" 
                   className="w-full muse-select" 
@@ -142,7 +153,7 @@ const ProductsPage: React.FC = () => {
 
               {/* Lọc theo Danh mục */}
               <div>
-                <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-[0.2em] text-gray-400">Danh mục</label>
+                <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-widest text-gray">Danh mục</label>
                 <Select 
                   placeholder="Chọn danh mục" 
                   className="w-full muse-select" 
@@ -153,32 +164,13 @@ const ProductsPage: React.FC = () => {
                   {categories.map((c) => <Option key={c.id} value={c.id}>{c.name}</Option>)}
                 </Select>
               </div>
-
-              {/* Lọc theo Giá tiền */}
-              <div>
-                <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-[0.2em] text-gray-400">Khoảng giá (VNĐ)</label>
-                <Slider 
-                  range 
-                  min={0} 
-                  max={5000000} 
-                  step={50000}
-                  value={priceRange}
-                  onChange={(val: number[]) => setPriceRange(val as [number, number])}
-                  trackStyle={[{ backgroundColor: '#fb7185' }]}
-                  handleStyle={[{ borderColor: '#fb7185' }, { borderColor: '#fb7185' }]}
-                />
-                <div className="flex justify-between text-[11px] text-rose-400 mt-3 font-bold font-serif">
-                  <span>{formatCurrency(priceRange[0])}</span>
-                  <span>{formatCurrency(priceRange[1])}</span>
-                </div>
-              </div>
             </div>
           </Col>
 
           {/* DANH SÁCH SẢN PHẨM */}
           <Col xs={24} lg={18}>
             {loading ? (
-              <div className="text-center py-32"><Spin size="large" /></div>
+              <div className="text-center py-32"><Spin size="large" className="text-primary" /></div>
             ) : products.length > 0 ? (
               <>
                 <Row gutter={[24, 32]}>
@@ -186,14 +178,15 @@ const ProductsPage: React.FC = () => {
                     <Col key={product.id} xs={24} sm={12} xl={8}>
                       <Card
                         hoverable
-                        className="border-none shadow-sm h-full rounded-[40px] overflow-hidden group flex flex-col bg-white"
+                        className="border border-gray/10 shadow-sm h-full rounded-2xl overflow-hidden group flex flex-col bg-white hover:shadow-lg transition-all duration-300"
+                        bodyStyle={{ padding: '20px' }}
                         cover={
                           <Link to={`/products/${product.id}`}>
-                            <div className="h-72 overflow-hidden bg-rose-50/20 p-2">
+                            <div className="h-72 overflow-hidden bg-gray/5 p-1 border-b border-gray/5">
                               <img
                                 alt={product.name}
                                 src={getImageUrl(product.thumb_image)}
-                                className="w-full h-full object-cover rounded-[32px] group-hover:scale-110 transition-transform duration-700"
+                                className="w-full h-full object-cover rounded-xl group-hover:scale-105 transition-transform duration-700"
                               />
                             </div>
                           </Link>
@@ -202,25 +195,26 @@ const ProductsPage: React.FC = () => {
                         <div className="flex flex-col h-full">
                           <Meta
                             title={
-                              <Link to={`/products/${product.id}`} className="text-charcoal hover:text-rose-400 line-clamp-1 font-serif text-lg transition-colors">
+                              <Link to={`/products/${product.id}`} className="text-charcoal hover:text-primary line-clamp-1 font-serif text-lg transition-colors">
                                 {product.name}
                               </Link>
                             }
                             description={
-                              <div className="mt-2">
-                                <Text className="text-rose-500 font-bold text-xl font-serif">
+                              <div className="mt-2 flex flex-col gap-4">
+                                <Text className="text-primary font-medium text-lg">
                                   {formatCurrency(Number(product.min_price || 0))}
                                 </Text>
+                                <Link to={`/products/${product.id}`} className="w-full mt-auto">
+                                  <Button 
+                                    block 
+                                    className="rounded-lg border-primary text-primary h-10 font-medium flex items-center justify-center gap-2 hover:!bg-primary hover:!text-white transition-colors"
+                                  >
+                                    Xem chi tiết <ChevronRight size={16} />
+                                  </Button>
+                                </Link>
                               </div>
                             }
                           />
-                          <div className="mt-6 pt-4 border-t border-rose-50">
-                             <Link to={`/products/${product.id}`}>
-                                <Button block className="rounded-full border-rose-100 text-rose-400 font-bold uppercase tracking-widest text-[10px] h-12 flex items-center justify-center gap-2 hover:!bg-rose-400 hover:!text-white transition-all">
-                                    Chi tiết món quà <ChevronRight size={14} />
-                                </Button>
-                             </Link>
-                          </div>
                         </div>
                       </Card>
                     </Col>
@@ -244,14 +238,17 @@ const ProductsPage: React.FC = () => {
                 </div>
               </>
             ) : (
-              <Card className="text-center py-24 border-none shadow-sm rounded-[40px] bg-white">
-                <Empty description={<Text className="text-gray-400 italic font-serif text-lg">Muse chưa tìm thấy sản phẩm nàng cần...</Text>} />
+              <Card className="text-center py-24 border border-gray/10 shadow-sm rounded-2xl bg-white">
+                <Empty 
+                  description={<Text className="text-gray italic font-serif text-base">Không tìm thấy sản phẩm phù hợp với bộ lọc hiện tại.</Text>} 
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                />
                 <Button 
                     type="primary" 
-                    className="mt-8 bg-rose-400 border-none rounded-full h-12 px-8 uppercase tracking-widest font-bold" 
+                    className="mt-8 bg-primary border-primary rounded-lg h-11 px-8 font-medium hover:!bg-primary/90 transition-all" 
                     onClick={clearFilters}
                 >
-                    Xem lại tất cả sản phẩm
+                    Xóa bộ lọc
                 </Button>
               </Card>
             )}

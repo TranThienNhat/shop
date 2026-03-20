@@ -6,7 +6,6 @@ import {
   Button,
   Typography,
   InputNumber,
-  Empty,
   Divider,
   Input,
   message,
@@ -17,7 +16,6 @@ import { Trash2, Plus, Minus, ShoppingBag, Ticket, X } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { getImageUrl, formatCurrency } from "../utils/helpers";
 
-// Sửa lỗi TypeScript bằng cách bóc tách từ Typography chuẩn
 const { Title, Text, Paragraph } = Typography;
 
 const CartPage: React.FC = () => {
@@ -44,7 +42,7 @@ const CartPage: React.FC = () => {
   };
 
   const handleApplyCoupon = async () => {
-    if (!couponInput.trim()) return message.warning("Nàng nhập mã giảm giá đã nhé!");
+    if (!couponInput.trim()) return message.warning("Vui lòng nhập mã giảm giá!");
     try {
       await applyCoupon(couponInput);
       setCouponInput("");
@@ -53,18 +51,19 @@ const CartPage: React.FC = () => {
     }
   };
 
+  // 1. TRẠNG THÁI GIỎ HÀNG TRỐNG
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-[#fffafb] flex items-center justify-center">
-        <div className="text-center bg-white p-12 rounded-[40px] shadow-sm border border-rose-50 max-w-md">
-          <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShoppingBag size={32} className="text-rose-300" />
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center bg-white p-10 md:p-14 rounded-2xl shadow-sm border border-gray/10 max-w-md w-full">
+          <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <ShoppingBag size={32} className="text-primary" />
           </div>
-          <Title level={3} className="!font-serif !text-charcoal">Túi đồ trống</Title>
-          <Paragraph className="text-gray-400 mb-8">Nàng chưa chọn được sản phẩm nào ưng ý sao?</Paragraph>
+          <Title level={3} className="!font-serif !text-charcoal mb-3">Giỏ hàng trống</Title>
+          <Paragraph className="text-gray mb-8">Bạn chưa chọn được sản phẩm nào sao?</Paragraph>
           <Link to="/products">
-            <Button type="primary" size="large" className="bg-rose-400 border-none rounded-full h-12 px-10 font-medium shadow-lg shadow-rose-100">
-              MUA SẮM NGAY
+            <Button type="primary" size="large" className="bg-primary border-primary hover:bg-primary/90 rounded-lg h-12 px-10 font-medium w-full">
+              Mua sắm ngay
             </Button>
           </Link>
         </div>
@@ -73,26 +72,28 @@ const CartPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#fffafb] py-12">
+    <div className="min-h-screen bg-background py-12">
       <div className="max-w-6xl mx-auto px-4 lg:px-8">
-        <div className="mb-10">
-          <Title level={2} className="!font-serif !text-charcoal !mb-2">Giỏ hàng của nàng</Title>
-          <Text className="text-gray-400 uppercase tracking-widest text-xs">Muse Cosmetics / Shopping Cart</Text>
+        
+        {/* HEADER */}
+        <div className="mb-10 border-b border-gray/10 pb-6">
+          <Title level={2} className="!font-serif !text-charcoal !mb-2">Giỏ hàng của bạn</Title>
+          <Text className="text-gray uppercase tracking-widest text-xs">Muse Cosmetics / Shopping Cart</Text>
         </div>
 
         <Row gutter={[32, 32]}>
           {/* CỘT TRÁI: DANH SÁCH SẢN PHẨM */}
-          <Col xs={24} lg={16}>
+          <Col xs={24} lg={15}>
             <div className="space-y-4">
               {items.map((item) => (
                 <Card
                   key={item.variant_id}
-                  className="border-none shadow-sm rounded-[24px] hover:shadow-md transition-all overflow-hidden"
+                  className="border border-gray/10 shadow-sm rounded-2xl hover:shadow-md transition-all overflow-hidden bg-white"
                   bodyStyle={{ padding: "20px" }}
                 >
                   <div className="flex flex-col sm:flex-row items-center gap-6">
                     {/* Ảnh sản phẩm */}
-                    <div className="w-24 h-24 rounded-2xl overflow-hidden bg-rose-50/30 flex-shrink-0">
+                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray/5 flex-shrink-0 border border-gray/5">
                       <img
                         src={getImageUrl(item.image_url || "")}
                         alt={item.name}
@@ -103,44 +104,48 @@ const CartPage: React.FC = () => {
 
                     {/* Thông tin */}
                     <div className="flex-1 text-center sm:text-left">
-                      <Link to={`/products/${item.product_id}`} className="text-charcoal font-serif text-lg hover:text-rose-400 block mb-1">
+                      <Link to={`/products/${item.product_id}`} className="text-charcoal font-serif text-lg hover:text-primary transition-colors block mb-2 line-clamp-2">
                         {item.name}
                       </Link>
-                      <Tag className="bg-rose-50 text-rose-400 border-none rounded-full px-3 py-0.5 text-[10px] uppercase font-bold">
+                      <Tag className="bg-primary/5 text-primary border-none rounded-md px-2 py-1 text-xs font-medium">
                         {item.variant_name || "Mặc định"}
                       </Tag>
                     </div>
 
                     {/* Giá & Số lượng */}
-                    <div className="flex flex-col items-center sm:items-end gap-3">
-                      <Text className="text-rose-400 font-bold text-base">
+                    <div className="flex flex-col items-center sm:items-end gap-4 mt-4 sm:mt-0">
+                      <Text className="text-primary font-medium text-lg">
                         {formatCurrency(Number(item.price) * item.quantity)}
                       </Text>
                       
                       <div className="flex items-center gap-4">
-                        <div className="flex items-center bg-gray-50 rounded-full p-1 border border-gray-100">
+                        {/* Control số lượng */}
+                        <div className="flex items-center bg-background rounded-lg border border-gray/20 p-0.5">
                           <Button 
-                            type="text" shape="circle" size="small" icon={<Minus size={12} />} 
+                            type="text" size="small" icon={<Minus size={14} />} 
                             onClick={() => handleQuantityChange(item.variant_id, item.quantity - 1)}
                             disabled={item.quantity <= 1 || isLoading}
+                            className="text-gray hover:text-charcoal"
                           />
                           <InputNumber
                             min={1} value={item.quantity} controls={false} readOnly
-                            className="w-8 border-0 bg-transparent text-center font-bold !text-charcoal text-xs"
+                            className="w-10 border-0 bg-transparent text-center font-medium !text-charcoal text-sm"
                           />
                           <Button 
-                            type="text" shape="circle" size="small" icon={<Plus size={12} />} 
+                            type="text" size="small" icon={<Plus size={14} />} 
                             onClick={() => handleQuantityChange(item.variant_id, item.quantity + 1)}
                             disabled={isLoading}
+                            className="text-gray hover:text-charcoal"
                           />
                         </div>
+
+                        {/* Nút xóa */}
                         <Button
                           type="text"
-                          danger
                           icon={<Trash2 size={18} strokeWidth={1.5} />}
                           onClick={() => removeFromCart(item.variant_id)}
                           disabled={isLoading}
-                          className="hover:bg-rose-50 rounded-full"
+                          className="text-gray hover:text-red-500 hover:bg-red-50 rounded-lg flex items-center justify-center"
                         />
                       </div>
                     </div>
@@ -151,25 +156,26 @@ const CartPage: React.FC = () => {
           </Col>
 
           {/* CỘT PHẢI: TÓM TẮT ĐƠN HÀNG & MÃ GIẢM GIÁ */}
-          <Col xs={24} lg={8}>
+          <Col xs={24} lg={9}>
             <div className="sticky top-24 space-y-6">
+              
               {/* Box Mã giảm giá */}
-              <Card className="border-none shadow-sm rounded-[24px] p-2">
-                <div className="flex items-center gap-2 mb-4 text-rose-400 font-medium">
-                  <Ticket size={18} />
-                  <span>Mã ưu đãi của nàng</span>
+              <Card className="border border-gray/10 shadow-sm rounded-2xl bg-white" bodyStyle={{ padding: "24px" }}>
+                <div className="flex items-center gap-2 mb-4 text-charcoal font-medium">
+                  <Ticket size={18} className="text-primary" />
+                  <span>Mã ưu đãi</span>
                 </div>
                 {!couponCode ? (
                   <div className="flex gap-2">
                     <Input 
-                      placeholder="Nhập mã..." 
-                      className="rounded-full border-rose-100 h-10"
+                      placeholder="Nhập mã giảm giá..." 
+                      className="rounded-lg border-gray/20 h-11"
                       value={couponInput}
                       onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                     />
                     <Button 
                       type="primary" 
-                      className="bg-rose-400 border-none rounded-full h-10 font-medium"
+                      className="bg-primary border-primary hover:bg-primary/90 rounded-lg h-11 font-medium px-6"
                       onClick={handleApplyCoupon}
                       loading={isLoading}
                     >
@@ -177,53 +183,53 @@ const CartPage: React.FC = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between bg-rose-50 p-3 rounded-2xl border border-dashed border-rose-200">
+                  <div className="flex items-center justify-between bg-primary/5 p-3.5 rounded-lg border border-primary/20">
                     <div>
-                      <Text type="secondary" className="text-[10px] block uppercase">Đang áp dụng</Text>
-                      <Text className="text-rose-500 font-bold tracking-widest">{couponCode}</Text>
+                      <Text type="secondary" className="text-[10px] block uppercase font-medium">Đang áp dụng</Text>
+                      <Text className="text-primary font-bold tracking-widest">{couponCode}</Text>
                     </div>
-                    <Button type="text" icon={<X size={16} />} onClick={removeCoupon} className="text-rose-400" />
+                    <Button type="text" icon={<X size={16} />} onClick={removeCoupon} className="text-gray hover:text-red-500 hover:bg-red-50" />
                   </div>
                 )}
               </Card>
 
               {/* Box Tổng tiền */}
-              <Card className="border-none shadow-sm rounded-[24px] p-4 bg-white">
-                <Title level={4} className="!font-serif !text-charcoal !mb-6 text-center">Tóm tắt túi đồ</Title>
+              <Card className="border border-gray/10 shadow-sm rounded-2xl bg-white" bodyStyle={{ padding: "24px" }}>
+                <Title level={4} className="!font-serif !text-charcoal !mb-6">Tóm tắt đơn hàng</Title>
                 
                 <div className="space-y-4">
                   <div className="flex justify-between">
-                    <Text className="text-gray-400">Tạm tính</Text>
+                    <Text className="text-gray">Tạm tính</Text>
                     <Text className="text-charcoal font-medium">{formatCurrency(subtotal)}</Text>
                   </div>
                   
                   {discount > 0 && (
                     <div className="flex justify-between">
-                      <Text className="text-rose-400">Giảm giá</Text>
-                      <Text className="text-rose-400 font-medium">-{formatCurrency(discount)}</Text>
+                      <Text className="text-primary">Giảm giá</Text>
+                      <Text className="text-primary font-medium">-{formatCurrency(discount)}</Text>
                     </div>
                   )}
 
                   <div className="flex justify-between">
-                    <Text className="text-gray-400">Phí vận chuyển</Text>
+                    <Text className="text-gray">Phí vận chuyển</Text>
                     <Text className="text-charcoal font-medium">
                       {subtotal >= 500000 ? "Miễn phí" : formatCurrency(30000)}
                     </Text>
                   </div>
 
-                  <Divider className="my-4 border-rose-50" />
+                  <Divider className="my-4 border-gray/10" />
 
-                  <div className="flex justify-between items-end">
+                  <div className="flex justify-between items-end mb-2">
                     <Text className="text-charcoal font-serif text-lg">Tổng cộng</Text>
-                    <Text className="text-2xl font-serif text-rose-500 font-bold">
+                    <Text className="text-2xl font-serif text-primary font-medium">
                       {formatCurrency(totalAmount + (subtotal >= 500000 ? 0 : 30000))}
                     </Text>
                   </div>
 
                   {subtotal < 500000 && (
-                    <div className="bg-blue-50/50 p-3 rounded-2xl text-center">
-                      <Text className="text-blue-500 text-[11px] italic">
-                        Mua thêm {formatCurrency(500000 - subtotal)} để được Freeship nàng nhé!
+                    <div className="bg-primary/5 p-3 rounded-lg text-center mt-2">
+                      <Text className="text-primary text-xs">
+                        Mua thêm <span className="font-bold">{formatCurrency(500000 - subtotal)}</span> để được miễn phí giao hàng!
                       </Text>
                     </div>
                   )}
@@ -232,7 +238,7 @@ const CartPage: React.FC = () => {
                     type="primary"
                     size="large"
                     block
-                    className="bg-rose-400 border-none h-14 rounded-full font-bold uppercase tracking-widest shadow-lg shadow-rose-100 hover:!bg-rose-500 mt-4"
+                    className="bg-primary border-primary hover:bg-primary/90 h-12 rounded-lg font-medium text-base mt-6 transition-all"
                     onClick={() => navigate("/checkout")}
                     loading={isLoading}
                   >
@@ -240,6 +246,7 @@ const CartPage: React.FC = () => {
                   </Button>
                 </div>
               </Card>
+              
             </div>
           </Col>
         </Row>

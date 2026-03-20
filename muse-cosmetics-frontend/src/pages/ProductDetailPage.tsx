@@ -49,7 +49,7 @@ const ProductDetailPage: React.FC = () => {
       const productData = productRes.data.data;
 
       if (!productData) {
-        message.error("Sản phẩm đã bay đi đâu mất rồi nàng ạ!");
+        message.error("Sản phẩm không tồn tại hoặc đã bị xóa!");
         navigate("/products");
         return;
       }
@@ -74,7 +74,7 @@ const ProductDetailPage: React.FC = () => {
       }
 
     } catch (error: any) {
-      message.error("Không thể kết nối với Muse lúc này");
+      message.error("Không thể tải thông tin sản phẩm lúc này.");
       navigate("/products");
     } finally { 
       setLoading(false); 
@@ -82,7 +82,7 @@ const ProductDetailPage: React.FC = () => {
   };
 
   const handleAddToCart = async () => {
-    if (!selectedVariant) return message.warning("Nàng chọn phiên bản trước nhé!");
+    if (!selectedVariant) return message.warning("Vui lòng chọn phiên bản sản phẩm!");
     try {
       setActionLoading(true);
       await addToCart(selectedVariant.id, quantity);
@@ -95,7 +95,7 @@ const ProductDetailPage: React.FC = () => {
   };
 
   const handleBuyNow = async () => {
-    if (!selectedVariant) return message.warning("Nàng chọn phiên bản trước nhé!");
+    if (!selectedVariant) return message.warning("Vui lòng chọn phiên bản sản phẩm!");
     try {
       setActionLoading(true);
       await addToCart(selectedVariant.id, quantity);
@@ -112,9 +112,9 @@ const ProductDetailPage: React.FC = () => {
     : 0;
 
   if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#fffafb]">
-      <Spin size="large" />
-      <Text className="mt-4 text-rose-300 italic font-serif">Muse đang chuẩn bị món quà cho nàng...</Text>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+      <Spin size="large" className="text-primary" />
+      <Text className="mt-4 text-gray italic font-serif text-sm">Đang tải thông tin sản phẩm...</Text>
     </div>
   );
   
@@ -123,38 +123,38 @@ const ProductDetailPage: React.FC = () => {
   const allImages = product.galleries?.map((g: any) => g.image_url) || [product.thumb_image];
 
   return (
-    <div className="bg-[#fffafb] min-h-screen pb-20">
+    <div className="bg-background min-h-screen pb-20">
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-10">
         
-        {/* Breadcrumb nhẹ nhàng */}
-        <Breadcrumb className="mb-10 text-[11px] uppercase tracking-widest text-gray-400">
-          <Breadcrumb.Item><Link to="/">Trang chủ</Link></Breadcrumb.Item>
-          <Breadcrumb.Item><Link to="/products">Cửa hàng</Link></Breadcrumb.Item>
-          <Breadcrumb.Item className="text-rose-400">{product.name}</Breadcrumb.Item>
+        {/* Breadcrumb */}
+        <Breadcrumb className="mb-8 text-[11px] uppercase tracking-widest text-gray">
+          <Breadcrumb.Item><Link to="/" className="hover:text-primary transition-colors">Trang chủ</Link></Breadcrumb.Item>
+          <Breadcrumb.Item><Link to="/products" className="hover:text-primary transition-colors">Cửa hàng</Link></Breadcrumb.Item>
+          <Breadcrumb.Item className="text-charcoal font-medium">{product.name}</Breadcrumb.Item>
         </Breadcrumb>
 
-        <Row gutter={[64, 64]}>
+        <Row gutter={[48, 48]}>
           {/* CỘT TRÁI: GALLERY ẢNH */}
           <Col xs={24} lg={11}>
             <div className="sticky top-24">
-              <div className="aspect-[4/5] overflow-hidden rounded-[40px] bg-white shadow-sm border border-rose-50 p-2">
+              <div className="aspect-[4/5] overflow-hidden rounded-2xl bg-white shadow-sm border border-gray/10 p-1">
                 <img
                   src={getImageUrl(selectedImage)}
                   alt={product.name}
-                  className="w-full h-full object-cover rounded-[32px] transition-all duration-500 hover:scale-105"
+                  className="w-full h-full object-cover rounded-xl transition-all duration-700 hover:scale-105"
                   onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/600x800?text=Muse"; }}
                 />
               </div>
-              <div className="flex gap-4 mt-6 overflow-x-auto pb-4 no-scrollbar">
+              <div className="flex gap-3 mt-4 overflow-x-auto pb-4 custom-scrollbar">
                 {allImages.map((img: string, i: number) => (
                   <button 
                     key={i} 
                     onClick={() => setSelectedImage(img)}
-                    className={`w-20 h-24 rounded-2xl overflow-hidden border-2 flex-shrink-0 transition-all ${
-                        selectedImage === img ? "border-rose-300 shadow-md shadow-rose-100 scale-105" : "border-transparent opacity-60"
+                    className={`w-20 h-24 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all ${
+                        selectedImage === img ? "border-primary opacity-100" : "border-transparent opacity-50 hover:opacity-100"
                     }`}
                   >
-                    <img src={getImageUrl(img)} alt="thumb" className="w-full h-full object-cover" />
+                    <img src={getImageUrl(img)} alt={`thumb-${i}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -165,34 +165,38 @@ const ProductDetailPage: React.FC = () => {
           <Col xs={24} lg={13}>
             <div className="space-y-8">
               <div>
-                <Title level={1} className="!font-serif !text-4xl !text-charcoal !mb-4 leading-tight">{product.name}</Title>
-                <div className="flex items-center gap-6">
+                <Title level={1} className="!font-serif !text-3xl md:!text-4xl !text-charcoal !mb-4 leading-tight">
+                  {product.name}
+                </Title>
+                <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <Rate disabled allowHalf value={averageRating} className="text-xs text-rose-300" />
-                    <Text className="text-rose-300 text-xs font-medium">({reviews.length} cảm nhận)</Text>
+                    <Rate disabled allowHalf value={averageRating} className="text-sm text-yellow-400" />
+                    <Text className="text-gray text-xs font-medium">({reviews.length} đánh giá)</Text>
                   </div>
-                  <Divider type="vertical" className="bg-rose-100 h-4" />
-                  <Text className="text-gray-400 text-xs uppercase tracking-widest">Mã: {selectedVariant?.sku || 'MUSE-001'}</Text>
+                  <Divider type="vertical" className="bg-gray/20 h-4" />
+                  <Text className="text-gray text-xs uppercase tracking-widest">Mã SP: {selectedVariant?.sku || 'MUSE-001'}</Text>
                 </div>
               </div>
 
               {/* Box Giá */}
-              <div className="bg-white p-8 rounded-[32px] shadow-sm border border-rose-50/50 inline-block min-w-[300px]">
-                <Text className="text-gray-300 line-through text-sm block mb-1">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray/10 inline-block min-w-[300px]">
+                <Text className="text-gray line-through text-sm block mb-1">
                   {formatCurrency(Number(selectedVariant?.price || 0) * 1.2)}
                 </Text>
                 <div className="flex items-baseline gap-3">
-                    <Text className="text-4xl font-serif text-rose-500 font-bold">
+                    <Text className="text-3xl md:text-4xl font-serif text-primary font-bold">
                         {formatCurrency(Number(selectedVariant?.price || product.min_price || 0))}
                     </Text>
-                    <Tag color="pink" className="border-none rounded-full text-[10px] uppercase font-bold">-20% OFF</Tag>
+                    <Tag className="bg-primary/10 text-primary border-none rounded-md px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider">
+                      -20%
+                    </Tag>
                 </div>
               </div>
 
               {/* Lựa chọn phiên bản */}
               {product.variants?.length > 0 && (
-                <div className="space-y-4">
-                  <Text strong className="text-xs uppercase tracking-widest text-gray-500">Nàng chọn phiên bản nào?</Text>
+                <div className="space-y-3">
+                  <Text strong className="text-xs uppercase tracking-widest text-charcoal">Phiên bản</Text>
                   <div className="flex flex-wrap gap-3">
                     {product.variants.map((v: any) => (
                       <Button
@@ -201,10 +205,10 @@ const ProductDetailPage: React.FC = () => {
                             setSelectedVariant(v);
                             if(v.variant_image) setSelectedImage(v.variant_image);
                         }}
-                        className={`h-11 px-6 rounded-full font-medium transition-all ${
+                        className={`h-10 px-5 rounded-lg font-medium transition-all ${
                             selectedVariant?.id === v.id 
-                            ? "bg-rose-400 border-none text-white shadow-lg shadow-rose-100" 
-                            : "bg-white border-rose-100 text-gray-400 hover:!text-rose-400 hover:!border-rose-400"
+                            ? "bg-primary border-primary text-white" 
+                            : "bg-background border-gray/20 text-gray hover:!text-primary hover:!border-primary"
                         }`}
                       >
                         {v.variant_name}
@@ -215,13 +219,14 @@ const ProductDetailPage: React.FC = () => {
               )}
 
               {/* Số lượng */}
-              <div className="flex items-center gap-6 pt-4">
-                <div className="flex items-center bg-white border border-rose-100 rounded-full p-1 shadow-sm">
+              <div className="flex items-center gap-6 pt-2">
+                <div className="flex items-center bg-background border border-gray/20 rounded-lg p-0.5">
                     <Button 
                         type="text" 
-                        shape="circle" 
-                        icon={<Text className="font-bold">-</Text>} 
+                        size="small"
+                        icon={<Text className="font-medium">-</Text>} 
                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        className="text-gray hover:text-charcoal"
                     />
                     <InputNumber 
                         min={1} 
@@ -230,30 +235,31 @@ const ProductDetailPage: React.FC = () => {
                         onChange={(v) => setQuantity(v || 1)} 
                         controls={false}
                         bordered={false}
-                        className="w-12 text-center font-bold"
+                        className="w-12 text-center font-medium !text-charcoal text-sm"
                     />
                     <Button 
                         type="text" 
-                        shape="circle" 
-                        icon={<Text className="font-bold">+</Text>} 
+                        size="small"
+                        icon={<Text className="font-medium">+</Text>} 
                         onClick={() => setQuantity(quantity + 1)}
                         disabled={quantity >= (selectedVariant?.stock_qty || 0)}
+                        className="text-gray hover:text-charcoal"
                     />
                 </div>
-                <Text className="text-gray-400 text-xs italic">
+                <Text className="text-gray text-xs">
                     {selectedVariant?.stock_qty && selectedVariant.stock_qty > 0 
-                        ? `Chỉ còn ${selectedVariant.stock_qty} món cuối cùng` 
-                        : "Hết hàng tạm thời"}
+                        ? `Còn lại ${selectedVariant.stock_qty} sản phẩm` 
+                        : <span className="text-red-500 font-medium">Tạm hết hàng</span>}
                 </Text>
               </div>
 
               {/* Nút Action */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-6">
+              <div className="flex flex-col sm:flex-row gap-3 pt-6">
                 <Button 
                   type="primary" 
                   size="large" 
-                  icon={<Zap size={18} fill="white" />} 
-                  className="bg-charcoal border-none h-16 flex-1 rounded-full font-bold uppercase tracking-[0.2em] shadow-xl hover:!bg-black transition-all hover:-translate-y-1"
+                  icon={<Zap size={18} fill="currentColor" />} 
+                  className="bg-charcoal border-charcoal h-12 flex-1 rounded-lg font-medium shadow-sm hover:!bg-black transition-all"
                   onClick={handleBuyNow}
                   loading={actionLoading}
                   disabled={!selectedVariant?.stock_qty}
@@ -264,28 +270,28 @@ const ProductDetailPage: React.FC = () => {
                 <Button 
                   size="large" 
                   icon={<ShoppingCart size={18} />} 
-                  className="bg-white border-2 border-rose-200 text-rose-400 h-16 flex-1 rounded-full font-bold uppercase tracking-[0.2em] hover:!border-rose-400 hover:!text-rose-400 transition-all hover:-translate-y-1"
+                  className="bg-transparent border-primary text-primary h-12 flex-1 rounded-lg font-medium hover:!bg-primary/5 hover:!border-primary hover:!text-primary transition-all"
                   onClick={handleAddToCart}
                   loading={actionLoading}
                   disabled={!selectedVariant?.stock_qty}
                 >
-                  Thêm vào túi
+                  Thêm vào giỏ
                 </Button>
               </div>
 
               {/* Cam kết shop */}
-              <div className="grid grid-cols-2 gap-4 pt-10">
-                  <div className="flex items-center gap-3 text-[11px] text-gray-400">
-                    <ShieldCheck size={16} className="text-green-300" /> Cam kết chính hãng 100%
+              <div className="grid grid-cols-2 gap-4 pt-8 border-t border-gray/10">
+                  <div className="flex items-center gap-3 text-xs text-gray">
+                    <ShieldCheck size={18} className="text-primary" /> Cam kết chính hãng
                   </div>
-                  <div className="flex items-center gap-3 text-[11px] text-gray-400">
-                    <Truck size={16} className="text-blue-300" /> Freeship đơn từ 500k
+                  <div className="flex items-center gap-3 text-xs text-gray">
+                    <Truck size={18} className="text-primary" /> Miễn phí vận chuyển
                   </div>
-                  <div className="flex items-center gap-3 text-[11px] text-gray-400">
-                    <CheckCircle2 size={16} className="text-rose-300" /> Đổi trả trong 7 ngày
+                  <div className="flex items-center gap-3 text-xs text-gray">
+                    <CheckCircle2 size={18} className="text-primary" /> Đổi trả 7 ngày
                   </div>
-                  <div className="flex items-center gap-3 text-[11px] text-gray-400">
-                    <Heart size={16} className="text-rose-300" /> Gói quà miễn phí
+                  <div className="flex items-center gap-3 text-xs text-gray">
+                    <Heart size={18} className="text-primary" /> Đóng gói an toàn
                   </div>
               </div>
             </div>
@@ -293,43 +299,43 @@ const ProductDetailPage: React.FC = () => {
         </Row>
 
         {/* TABS CHI TIẾT & REVIEW */}
-        <div className="mt-32">
+        <div className="mt-24">
           <Tabs defaultActiveKey="1" size="large" centered className="muse-tabs">
-            <TabPane tab={<span className="px-8 font-serif text-lg">Mô tả món quà</span>} key="1">
-              <div className="bg-white p-12 rounded-[48px] shadow-sm border border-rose-50/50 leading-relaxed text-gray-500 text-base max-w-4xl mx-auto">
-                <div dangerouslySetInnerHTML={{ __html: product.description || "Nội dung đang được Muse cập nhật..." }} />
+            <TabPane tab={<span className="px-6 font-serif text-lg">Mô tả sản phẩm</span>} key="1">
+              <div className="bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-gray/10 leading-relaxed text-gray text-base max-w-4xl mx-auto">
+                <div dangerouslySetInnerHTML={{ __html: product.description || "Nội dung đang được cập nhật..." }} />
               </div>
             </TabPane>
             
-            <TabPane tab={<span className="px-8 font-serif text-lg">Cảm nhận nàng thơ ({reviews.length})</span>} key="2">
-                <div className="max-w-5xl mx-auto py-10">
+            <TabPane tab={<span className="px-6 font-serif text-lg">Đánh giá khách hàng ({reviews.length})</span>} key="2">
+                <div className="max-w-4xl mx-auto py-8">
                     {reviews.length === 0 ? (
-                        <div className="text-center py-20 bg-white rounded-[40px] border border-dashed border-rose-100">
-                            <Star size={32} className="text-rose-100 mx-auto mb-4" />
-                            <Paragraph className="text-gray-300 italic font-serif">Chưa có đánh giá nào cho sản phẩm này. <br/> Hãy là nàng thơ đầu tiên để lại cảm nhận nhé ✨</Paragraph>
+                        <div className="text-center py-16 bg-background rounded-2xl border border-dashed border-gray/20">
+                            <Star size={32} className="text-gray/30 mx-auto mb-3" />
+                            <Paragraph className="text-gray italic font-serif mb-0">Chưa có đánh giá nào cho sản phẩm này.<br/>Hãy trải nghiệm và để lại đánh giá đầu tiên nhé.</Paragraph>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {reviews.map((r: any) => (
-                                <div key={r.id} className="bg-white p-8 rounded-[32px] shadow-sm border border-rose-50/50 hover:shadow-md transition-all">
-                                    <div className="flex justify-between items-start mb-6">
+                                <div key={r.id} className="bg-background p-6 rounded-2xl border border-gray/10 hover:shadow-sm transition-all">
+                                    <div className="flex justify-between items-start mb-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-400 font-serif font-bold text-lg shadow-inner">
+                                            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-serif font-bold text-base">
                                                 {r.user_name?.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
                                                 <Text strong className="block text-charcoal font-serif text-base">{r.user_name}</Text>
-                                                <Text className="text-[10px] text-gray-300 uppercase tracking-[0.2em]">
+                                                <Text className="text-[10px] text-gray uppercase tracking-widest">
                                                     {new Date(r.created_at).toLocaleDateString("vi-VN")}
                                                 </Text>
                                             </div>
                                         </div>
-                                        <Rate disabled value={Number(r.rating)} className="text-[10px] text-rose-300" />
+                                        <Rate disabled value={Number(r.rating)} className="text-xs text-yellow-400" />
                                     </div>
                                     
-                                    <div className="relative">
-                                        <span className="text-5xl text-rose-50 absolute -top-6 -left-2 font-serif select-none opacity-50">“</span>
-                                        <Paragraph className="text-gray-500 italic leading-relaxed relative z-10 pl-5 mb-0">
+                                    <div className="relative pt-2">
+                                        <span className="text-4xl text-gray/10 absolute -top-4 -left-2 font-serif select-none">“</span>
+                                        <Paragraph className="text-gray text-sm leading-relaxed relative z-10 pl-4 mb-0">
                                             {r.comment}
                                         </Paragraph>
                                     </div>
