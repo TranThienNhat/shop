@@ -20,22 +20,15 @@ const { Search } = Input;
 
 interface Order {
   id: number;
-  code: string;
+  order_code: string;
   user_id: number;
-  subtotal: number;
-  shipping_fee: number;
+  total_amount: number;
   discount_amount: number;
-  total_amount: number; // Changed from total to total_amount
-  payment_method: string;
-  payment_status: string;
-  shipping_name: string;
-  shipping_phone: string;
-  shipping_address: string;
-  shipping_email?: string;
-  note: string;
-  status: string;
+  final_amount: number;
+  coupon_id?: number;
+  status: "pending" | "processing" | "shipped" | "completed" | "cancelled";
   created_at: string;
-  updated_at: string;
+  items: any[];
 }
 
 const AdminOrdersPage: React.FC = () => {
@@ -65,15 +58,12 @@ const AdminOrdersPage: React.FC = () => {
 
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     try {
-      // Tìm đơn hàng hiện tại để kiểm tra status
       const currentOrder = orders.find((order) => order.id === orderId);
 
-      // Ngăn chỉnh sửa đơn hàng đã hủy hoặc hoàn tất
       if (
         currentOrder &&
         (currentOrder.status === "cancelled" ||
-          currentOrder.status === "completed" ||
-          currentOrder.status === "refunded")
+          currentOrder.status === "completed")
       ) {
         message.error(
           "Không thể thay đổi trạng thái đơn hàng đã hủy hoặc hoàn tất"
@@ -97,139 +87,61 @@ const AdminOrdersPage: React.FC = () => {
   };
 
   const filteredOrders = orders.filter((order) => {
-    // Kiểm tra search text
     const matchesSearch =
       searchText.trim() === "" ||
-      order.code.toLowerCase().includes(searchText.toLowerCase()) ||
-      (order.shipping_name &&
-        order.shipping_name.toLowerCase().includes(searchText.toLowerCase()));
-
-    // Kiểm tra status filter
-    const matchesStatus =
-      statusFilter === "all" || order.status === statusFilter;
-
+      order.order_code.toLowerCase().includes(searchText.toLowerCase());
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  // Debug log để kiểm tra filter
-  console.log("Filter debug:", {
-    totalOrders: orders.length,
-    filteredOrders: filteredOrders.length,
-    searchText,
-    statusFilter,
-  });
-
   const getStatusColor = (status: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       pending: "orange",
-      confirmed: "blue",
-      shipping: "purple",
+      processing: "blue",
+      shipped: "cyan",
       completed: "green",
       cancelled: "red",
-      refunded: "gray",
     };
-    return colors[status as keyof typeof colors] || "default";
+    return colors[status] || "default";
   };
 
   const getStatusText = (status: string) => {
-    const texts = {
+    const texts: Record<string, string> = {
       pending: "Chờ xử lý",
-      confirmed: "Đã xác nhận",
-      shipping: "Đang giao",
+      processing: "Đang xử lý",
+      shipped: "Đang giao",
       completed: "Hoàn thành",
       cancelled: "Đã hủy",
-      refunded: "Đã hoàn tiền",
     };
-    return texts[status as keyof typeof texts] || status;
+    return texts[status] || status;
   };
 
   const columns = [
     {
       title: "Mã đơn",
-      dataIndex: "code",
-      key: "code",
-      render: (code: string) => (
-        <span className="font-mono text-primary">{code}</span>
+      dataIndex: "order_code",
+      key: "order_code",
+      render: (order_code: string) => (
+        <span className="font-mono text-primary">{order_code}</span>
       ),
     },
     {
-      title: "Khách hàng",
-      dataIndex: "shipping_name",
-      key: "customer",
-    },
-    {
       title: "Tổng tiền",
-      dataIndex: "total_amount", // Changed from total to total_amount
-      key: "total_amount",
-      render: (total_amount: number) => formatCurrency(total_amount),
-      sorter: (a: Order, b: Order) => a.total_amount - b.total_amount,
-    },
-    {
-      title: "Thanh toán",
-      dataIndex: "payment_status",
-      key: "payment_status",
-      render: (status: string) => {
-        const colors = {
-          Unpaid: "red",
-          Paid: "green",
-          Refunded: "gray",
-        };
-        return (
-          <Tag color={colors[status as keyof typeof colors]}>{status}</Tag>
-        );
-      },
+      dataIndex: "final_amount",
+      key: "final_amount",
+      render: (final_amount: number) => formatCurrency(final_amount),
+      sorter: (a: Order, b: Order) => a.final_amount - b.final_amount,
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       render: (status: string, record: Order) => {
-        const isDisabled =
-          status === "cancelled" ||
-          status === "completed" ||
-          status === "refunded";
-
-        const getStatusColor = (status: string) => {
-          switch (status) {
-            case "pending":
-              return "orange";
-            case "confirmed":
-              return "blue";
-            case "shipping":
-              return "cyan";
-            case "completed":
-              return "green";
-            case "cancelled":
-              return "red";
-            case "refunded":
-              return "purple";
-            default:
-              return "default";
-          }
-        };
-
-        const getStatusText = (status: string) => {
-          switch (status) {
-            case "pending":
-              return "Chờ xử lý";
-            case "confirmed":
-              return "Đã xác nhận";
-            case "shipping":
-              return "Đang giao";
-            case "completed":
-              return "Hoàn tất";
-            case "cancelled":
-              return "Đã hủy";
-            case "refunded":
-              return "Hoàn tiền";
-            default:
-              return status;
-          }
-        };
+        const isDisabled = status === "cancelled" || status === "completed";
 
         if (isDisabled) {
           return (
-            <Tag color={getStatusColor(status)} className="cursor-not-allowed">
+            <Tag color={getStatusColor(status)}>
               {getStatusText(status)}
             </Tag>
           );
@@ -242,79 +154,18 @@ const AdminOrdersPage: React.FC = () => {
             size="small"
             bordered={false}
             suffixIcon={null}
-            style={{
-              width: "auto",
-              minWidth: "100px",
-            }}
+            style={{ width: "auto", minWidth: "120px" }}
             className="status-select"
             dropdownStyle={{ minWidth: "140px" }}
             optionLabelProp="label">
-            <Select.Option
-              value="pending"
-              label={
-                <Tag color="orange" className="m-0 border-0">
-                  {getStatusText("pending")}
-                </Tag>
-              }>
-              <Tag color="orange" className="m-0">
-                {getStatusText("pending")}
-              </Tag>
-            </Select.Option>
-            <Select.Option
-              value="confirmed"
-              label={
-                <Tag color="blue" className="m-0 border-0">
-                  {getStatusText("confirmed")}
-                </Tag>
-              }>
-              <Tag color="blue" className="m-0">
-                {getStatusText("confirmed")}
-              </Tag>
-            </Select.Option>
-            <Select.Option
-              value="shipping"
-              label={
-                <Tag color="cyan" className="m-0 border-0">
-                  {getStatusText("shipping")}
-                </Tag>
-              }>
-              <Tag color="cyan" className="m-0">
-                {getStatusText("shipping")}
-              </Tag>
-            </Select.Option>
-            <Select.Option
-              value="completed"
-              label={
-                <Tag color="green" className="m-0 border-0">
-                  {getStatusText("completed")}
-                </Tag>
-              }>
-              <Tag color="green" className="m-0">
-                {getStatusText("completed")}
-              </Tag>
-            </Select.Option>
-            <Select.Option
-              value="cancelled"
-              label={
-                <Tag color="red" className="m-0 border-0">
-                  {getStatusText("cancelled")}
-                </Tag>
-              }>
-              <Tag color="red" className="m-0">
-                {getStatusText("cancelled")}
-              </Tag>
-            </Select.Option>
-            <Select.Option
-              value="refunded"
-              label={
-                <Tag color="purple" className="m-0 border-0">
-                  {getStatusText("refunded")}
-                </Tag>
-              }>
-              <Tag color="purple" className="m-0">
-                {getStatusText("refunded")}
-              </Tag>
-            </Select.Option>
+            {(["pending", "processing", "shipped", "completed", "cancelled"] as const).map((s) => (
+              <Select.Option
+                key={s}
+                value={s}
+                label={<Tag color={getStatusColor(s)} className="m-0 border-0">{getStatusText(s)}</Tag>}>
+                <Tag color={getStatusColor(s)} className="m-0">{getStatusText(s)}</Tag>
+              </Select.Option>
+            ))}
           </Select>
         );
       },
@@ -391,8 +242,8 @@ const AdminOrdersPage: React.FC = () => {
               onChange={setStatusFilter}>
               <Select.Option value="all">Tất cả</Select.Option>
               <Select.Option value="pending">Chờ xử lý</Select.Option>
-              <Select.Option value="confirmed">Đã xác nhận</Select.Option>
-              <Select.Option value="shipping">Đang giao</Select.Option>
+              <Select.Option value="processing">Đang xử lý</Select.Option>
+              <Select.Option value="shipped">Đang giao</Select.Option>
               <Select.Option value="completed">Hoàn thành</Select.Option>
               <Select.Option value="cancelled">Đã hủy</Select.Option>
             </Select>
@@ -426,7 +277,7 @@ const AdminOrdersPage: React.FC = () => {
         </Card>
 
         <Modal
-          title={`Chi tiết đơn hàng ${selectedOrder?.code}`}
+          title={`Chi tiết đơn hàng ${selectedOrder?.order_code}`}
           open={modalVisible}
           onCancel={() => {
             setModalVisible(false);
@@ -438,57 +289,34 @@ const AdminOrdersPage: React.FC = () => {
             <div className="space-y-6">
               <Descriptions title="Thông tin đơn hàng" bordered column={2}>
                 <Descriptions.Item label="Mã đơn">
-                  {selectedOrder.code}
+                  {selectedOrder.order_code}
                 </Descriptions.Item>
                 <Descriptions.Item label="Trạng thái">
                   <Tag color={getStatusColor(selectedOrder.status)}>
                     {getStatusText(selectedOrder.status)}
                   </Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="Tạm tính">
-                  {formatCurrency(selectedOrder.subtotal)}
-                </Descriptions.Item>
-                <Descriptions.Item label="Phí vận chuyển">
-                  {formatCurrency(selectedOrder.shipping_fee)}
+                <Descriptions.Item label="Tổng tiền hàng">
+                  {formatCurrency(selectedOrder.total_amount)}
                 </Descriptions.Item>
                 <Descriptions.Item label="Giảm giá">
                   {formatCurrency(selectedOrder.discount_amount)}
                 </Descriptions.Item>
-                <Descriptions.Item label="Tổng cộng">
-                  <strong>{formatCurrency(selectedOrder.total_amount)}</strong>
-                </Descriptions.Item>
-                <Descriptions.Item label="Phương thức thanh toán">
-                  {selectedOrder.payment_method}
-                </Descriptions.Item>
-                <Descriptions.Item label="Trạng thái thanh toán">
-                  <Tag
-                    color={
-                      selectedOrder.payment_status === "Paid" ? "green" : "red"
-                    }>
-                    {selectedOrder.payment_status}
-                  </Tag>
+                <Descriptions.Item label="Thực trả" span={2}>
+                  <strong>{formatCurrency(selectedOrder.final_amount)}</strong>
                 </Descriptions.Item>
               </Descriptions>
 
-              <Descriptions title="Thông tin giao hàng" bordered column={1}>
-                <Descriptions.Item label="Tên người nhận">
-                  {selectedOrder.shipping_name}
-                </Descriptions.Item>
-                <Descriptions.Item label="Số điện thoại">
-                  {selectedOrder.shipping_phone}
-                </Descriptions.Item>
-                <Descriptions.Item label="Email">
-                  {selectedOrder.shipping_email || "Chưa có thông tin"}
-                </Descriptions.Item>
-                <Descriptions.Item label="Địa chỉ">
-                  {selectedOrder.shipping_address}
-                </Descriptions.Item>
-                {selectedOrder.note && (
-                  <Descriptions.Item label="Ghi chú">
-                    {selectedOrder.note}
-                  </Descriptions.Item>
-                )}
-              </Descriptions>
+              {selectedOrder.items?.length > 0 && (
+                <Descriptions title="Sản phẩm" bordered column={1}>
+                  {selectedOrder.items.map((item: any) => (
+                    <Descriptions.Item key={item.id} label={item.name}>
+                      {item.variant_name && <span className="text-gray mr-2">({item.variant_name})</span>}
+                      {formatCurrency(item.price)} x {item.quantity}
+                    </Descriptions.Item>
+                  ))}
+                </Descriptions>
+              )}
             </div>
           )}
         </Modal>

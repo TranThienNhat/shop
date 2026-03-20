@@ -1,133 +1,70 @@
 import { Request, Response } from "express";
 import Cart from "../models/CartModel";
-import { IUser } from "../interfaces/User"; // 1. Import thêm Interface User
+import { IUser } from "../interfaces/User";
 
-// 2. Định nghĩa Interface mở rộng ngay tại đây để TS hiểu req.user
 interface AuthRequest extends Request {
   user?: IUser;
 }
 
-// Helper lấy định danh (User ID hoặc Session ID)
 const getIdentity = (req: Request) => {
-  // 3. Ép kiểu (Cast) req sang AuthRequest
   const authReq = req as AuthRequest;
-
-  const userId = authReq.user?.id;
-  const sessionId = req.headers["x-session-id"] as string;
-  return { userId, sessionId };
+  return {
+    userId: authReq.user?.id,
+    sessionId: req.headers["x-session-id"] as string,
+  };
 };
 
-// --- GET CART ---
-export const getCart = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const getCart = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { userId, sessionId } = getIdentity(req);
-    console.log("Get cart request:", { userId, sessionId }); // Debug log
-
     if (!userId && !sessionId) return res.json({ items: [], total: 0 });
 
-    let cart = await Cart.findCart(userId, sessionId);
-    console.log("Found cart:", cart); // Debug log
+    const cart = await Cart.findCart(userId, sessionId);
+    if (!cart) return res.json({ items: [], total: 0, subtotal: 0, discount: 0 });
 
-    if (!cart)
-      return res.json({ items: [], total: 0, subtotal: 0, discount: 0 });
-
-    // Get cart with coupon info
     const cartData = await Cart.getCartWithCoupon(cart.id!);
-    console.log("Cart data with coupon:", cartData); // Debug log
-
-    return res.json({
-      id: cart.id,
-      ...cartData,
-    });
+    return res.json({ id: cart.id, ...cartData });
   } catch (error) {
     console.error("Get cart error:", error);
     return res.status(500).json({ message: "Lỗi server" });
   }
 };
 
-// --- ADD TO CART ---
-export const addToCart = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const addToCart = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { productId, quantity } = req.body;
+    const { variantId, quantity } = req.body;
     const { userId, sessionId } = getIdentity(req);
 
-    // Debug log để kiểm tra dữ liệu
-    console.log("Add to cart request:", {
-      productId,
-      quantity,
-      userId,
-      sessionId,
-    });
-
-    // Validate productId
-    if (!productId || isNaN(parseInt(productId))) {
-      return res.status(400).json({ message: "Product ID không hợp lệ" });
+    if (!variantId || isNaN(parseInt(variantId))) {
+      return res.status(400).json({ message: "Variant ID không hợp lệ" });
     }
 
-    if (!userId && !sessionId)
-      return res.status(400).json({ message: "Thiếu Session ID" });
+    if (!userId && !sessionId) return res.status(400).json({ message: "Thiếu Session ID" });
 
-    // 1. Tìm hoặc tạo giỏ hàng
     let cart = await Cart.findCart(userId, sessionId);
     if (!cart) {
-      const cartId = await Cart.create({
-        user_id: userId || null,
-        session_id: userId ? null : sessionId,
-      });
+      const cartId = await Cart.create({ user_id: userId || null, session_id: userId ? null : sessionId });
       cart = { id: cartId } as any;
     }
 
-    // 2. Thêm sản phẩm với productId đã validate
-    const validProductId = parseInt(productId);
-    const validQuantity = parseInt(quantity) || 1;
-
-    console.log("Adding to cart:", {
-      cartId: cart!.id,
-      productId: validProductId,
-      quantity: validQuantity,
-    });
-
-    await Cart.addItem(cart!.id!, validProductId, validQuantity);
-
+    await Cart.addItem(cart!.id!, parseInt(variantId), parseInt(quantity) || 1);
     return res.json({ message: "Đã thêm vào giỏ" });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Add to cart error:", error);
-    return res.status(500).json({ message: "Lỗi server" });
+    return res.status(400).json({ message: error.message || "Lỗi server" });
   }
 };
 
-// --- UPDATE ITEM QUANTITY ---
-export const updateItemQuantity = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const updateItemQuantity = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { productId } = req.params;
+    const { variantId } = req.params;
     const { quantity } = req.body;
     const { userId, sessionId } = getIdentity(req);
 
-    // Validate input
-    if (!productId || !quantity || quantity < 1) {
-      return res.status(400).json({ message: "Dữ liệu không hợp lệ" });
-    }
-
     const cart = await Cart.findCart(userId, sessionId);
-    if (!cart) {
-      return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
-    }
+    if (!cart) return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
 
-    await Cart.updateItemQuantity(
-      cart.id!,
-      parseInt(productId),
-      parseInt(quantity)
-    );
-
+    await Cart.updateItemQuantity(cart.id!, parseInt(variantId), parseInt(quantity));
     return res.json({ message: "Đã cập nhật số lượng" });
   } catch (error: any) {
     console.error("Update quantity error:", error);
@@ -135,85 +72,45 @@ export const updateItemQuantity = async (
   }
 };
 
-// --- APPLY COUPON ---
-export const applyCoupon = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const applyCoupon = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { couponCode } = req.body;
     const { userId, sessionId } = getIdentity(req);
 
-    if (!couponCode) {
-      return res.status(400).json({ message: "Thiếu mã giảm giá" });
-    }
+    if (!couponCode) return res.status(400).json({ message: "Thiếu mã giảm giá" });
 
     const cart = await Cart.findCart(userId, sessionId);
-    if (!cart) {
-      return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
-    }
+    if (!cart) return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
 
-    const result = await Cart.applyCoupon(cart.id!, couponCode);
-
-    return res.json({
-      success: true,
-      message: "Áp dụng mã giảm giá thành công",
-      ...result,
-    });
+    const result = await Cart.applyCoupon(cart.id!, couponCode, userId);
+    return res.json({ success: true, message: "Áp dụng mã giảm giá thành công", ...result });
   } catch (error: any) {
     console.error("Apply coupon error:", error);
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Lỗi server",
-    });
+    return res.status(400).json({ success: false, message: error.message || "Lỗi server" });
   }
 };
 
-// --- REMOVE COUPON ---
-export const removeCoupon = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const removeCoupon = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { userId, sessionId } = getIdentity(req);
-
-    console.log("Remove coupon request:", { userId, sessionId });
-
     const cart = await Cart.findCart(userId, sessionId);
-    if (!cart) {
-      console.log("Cart not found for remove coupon");
-      return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
-    }
+    if (!cart) return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
 
-    console.log("Removing coupon from cart:", cart.id);
     await Cart.removeCoupon(cart.id!);
-
-    console.log("Coupon removed successfully");
-    return res.json({
-      success: true,
-      message: "Đã xóa mã giảm giá",
-    });
+    return res.json({ success: true, message: "Đã xóa mã giảm giá" });
   } catch (error) {
     console.error("Remove coupon error:", error);
     return res.status(500).json({ message: "Lỗi server" });
   }
 };
 
-// --- CLEAR CART ---
-export const clearCart = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const clearCart = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { userId, sessionId } = getIdentity(req);
-
     const cart = await Cart.findCart(userId, sessionId);
-    if (!cart) {
-      return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
-    }
+    if (!cart) return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
 
     await Cart.clearCart(cart.id!);
-
     return res.json({ message: "Đã xóa tất cả sản phẩm trong giỏ hàng" });
   } catch (error) {
     console.error("Clear cart error:", error);
@@ -221,19 +118,13 @@ export const clearCart = async (
   }
 };
 
-// --- REMOVE ITEM ---
-export const removeItem = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const removeItem = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { productId } = req.params;
+    const { variantId } = req.params;
     const { userId, sessionId } = getIdentity(req);
 
     const cart = await Cart.findCart(userId, sessionId);
-    if (cart) {
-      await Cart.removeItem(cart.id!, parseInt(productId));
-    }
+    if (cart) await Cart.removeItem(cart.id!, parseInt(variantId));
 
     return res.json({ message: "Đã xóa sản phẩm" });
   } catch (error) {

@@ -102,12 +102,6 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
 
     const token = generateToken(user);
 
-    if (user.id) {
-      User.update(user.id, { last_login_at: new Date() }).catch((err) =>
-        console.error("Update login time fail:", err)
-      );
-    }
-
     const { password: _, ...userWithoutPassword } = user;
 
     return res.json({

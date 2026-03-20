@@ -1,18 +1,15 @@
 import { Request, Response } from "express";
-import Product from "../models/ProductModel";
+import Product, { ProductVariant } from "../models/ProductModel";
 import Gallery from "../models/GalleryModel";
-import { IProduct } from "../interfaces/Product";
 
-// --- HELPER: Tạo Slug từ tên sản phẩm ---
-const createSlug = (str: string) => {
-  return str
+const createSlug = (str: string) =>
+  str
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9 -]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
-};
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
   try {
@@ -20,60 +17,23 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = (page - 1) * limit;
 
-    // Lấy các query parameters
-    const search = req.query.search as string; // Frontend gửi 'search'
-    const keyword = req.query.keyword as string; // Backward compatibility
-    const category_id = req.query.category_id
-      ? parseInt(req.query.category_id as string)
-      : undefined;
-    const brand_id = req.query.brand_id
-      ? parseInt(req.query.brand_id as string)
-      : undefined;
+    const search = (req.query.search as string) || (req.query.keyword as string);
+    const category_id = req.query.category_id ? parseInt(req.query.category_id as string) : undefined;
+    const brand_id = req.query.brand_id ? parseInt(req.query.brand_id as string) : undefined;
     const status = req.query.status as string;
-    const min_price = req.query.min_price
-      ? parseFloat(req.query.min_price as string)
-      : undefined;
-    const max_price = req.query.max_price
-      ? parseFloat(req.query.max_price as string)
-      : undefined;
+    const min_price = req.query.min_price ? parseFloat(req.query.min_price as string) : undefined;
+    const max_price = req.query.max_price ? parseFloat(req.query.max_price as string) : undefined;
 
-    // Build where conditions
     const where: any = {};
+    if (status && status !== "all") where.status = status;
+    else if (!status) where.status = "active";
     if (category_id) where.category_id = category_id;
     if (brand_id) where.brand_id = brand_id;
-    if (status) where.status = status;
-    else where.status = "in_stock";
 
-    // Search term (support both 'search' and 'keyword')
-    const searchTerm = search || keyword;
+    const products = await Product.findAll({ where, search, minPrice: min_price, maxPrice: max_price, limit, offset, orderBy: "id", orderDir: "DESC" });
+    const total = await Product.count({ where, search, minPrice: min_price, maxPrice: max_price });
 
-    const products = await Product.findAll({
-      where,
-      search: searchTerm,
-      minPrice: min_price,
-      maxPrice: max_price,
-      limit,
-      offset,
-      orderBy: "created_at",
-      orderDir: "DESC",
-    });
-
-    const total = await Product.count({
-      ...where,
-      search: searchTerm,
-      minPrice: min_price,
-      maxPrice: max_price,
-    });
-
-    return res.json({
-      data: products,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
+    return res.json({ data: products, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Lỗi server" });
@@ -82,145 +42,100 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
 
 export const show = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { id } = req.params;
+    const product = await Product.findWithVariants(req.params.id);
+    if (!product) return res.status(404).json({ message: "Sản phẩm không tồn tại" });
 
-    const product = await Product.findById(id);
-
-    if (!product) {
-      return res.status(404).json({ message: "Sản phẩm không tồn tại" });
-    }
-
-    const galleries = await Gallery.findAll({
-      where: { product_id: parseInt(id) },
-      orderBy: "sort_order",
-      orderDir: "ASC",
-    });
-
-    return res.json({
-      message: "Lấy thông tin sản phẩm thành công",
-      data: {
-        ...product,
-        galleries: galleries,
-      },
-    });
+    const galleries = await Gallery.findAll({ where: { product_id: parseInt(req.params.id) }, orderBy: "sort_order", orderDir: "ASC" });
+    return res.json({ message: "Lấy thông tin sản phẩm thành công", data: { ...product, galleries } });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Lỗi server" });
   }
 };
 
-export const showBySlug = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const showBySlug = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { slug } = req.params;
+    const product = await Product.findBySlugWithVariants(req.params.slug);
+    if (!product) return res.status(404).json({ message: "Sản phẩm không tồn tại" });
 
-    const product = await Product.findOne({ slug });
-
-    if (!product) {
-      return res.status(404).json({ message: "Sản phẩm không tồn tại" });
-    }
-
-    const galleries = await Gallery.findAll({
-      where: { product_id: product.id },
-      orderBy: "sort_order",
-      orderDir: "ASC",
-    });
-
-    return res.json({
-      message: "Lấy thông tin sản phẩm thành công",
-      data: {
-        ...product,
-        galleries: galleries,
-      },
-    });
+    const galleries = await Gallery.findAll({ where: { product_id: product.id }, orderBy: "sort_order", orderDir: "ASC" });
+    return res.json({ message: "Lấy thông tin sản phẩm thành công", data: { ...product, galleries } });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Lỗi server" });
   }
 };
 
-// --- CREATE: Tạo mới (Kèm ảnh Gallery) ---
-export const create = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const create = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { gallery, ...productData } = req.body;
-    const { name, price } = productData as IProduct;
+    const { gallery, variants, ...productData } = req.body;
 
-    if (!name || !price) {
-      return res.status(400).json({ message: "Tên và giá là bắt buộc" });
+    if (!productData.name) {
+      return res.status(400).json({ message: "Tên sản phẩm là bắt buộc" });
     }
 
-    const slug = createSlug(name) + "-" + Date.now();
-
+    const slug = createSlug(productData.name) + "-" + Date.now();
     const newProductId = await Product.create({
       ...productData,
       slug,
-      status: productData.status || "in_stock",
-      stock_qty: productData.stock_qty || 0,
+      status: productData.status || "active",
     });
 
-    if (gallery && Array.isArray(gallery) && gallery.length > 0) {
-      const galleryPromises = gallery.map((imgUrl: string, index: number) => {
-        return Gallery.create({
-          product_id: newProductId,
-          image_url: imgUrl,
-          sort_order: index,
-        });
+    // Tạo variants nếu có
+    if (variants && Array.isArray(variants) && variants.length > 0) {
+      for (const v of variants) {
+        await ProductVariant.create({ ...v, product_id: newProductId });
+      }
+    } else {
+      // Tạo variant mặc định nếu không có
+      await ProductVariant.create({
+        product_id: newProductId,
+        variant_name: "Mặc định",
+        price: productData.price || 0,
+        stock_qty: productData.stock_qty || 0,
       });
-      await Promise.all(galleryPromises);
     }
 
-    return res.status(201).json({
-      message: "Tạo sản phẩm thành công",
-      id: newProductId,
-      slug,
-    });
+    if (gallery && Array.isArray(gallery) && gallery.length > 0) {
+      await Promise.all(gallery.map((imgUrl: string, index: number) =>
+        Gallery.create({ product_id: newProductId, image_url: imgUrl, sort_order: index })
+      ));
+    }
+
+    return res.status(201).json({ message: "Tạo sản phẩm thành công", id: newProductId, slug });
   } catch (error) {
     console.error("Create Product Error:", error);
     return res.status(500).json({ message: "Lỗi khi tạo sản phẩm" });
   }
 };
 
-// --- UPDATE: Cập nhật (Kèm replace ảnh Gallery) ---
-export const update = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const update = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { id } = req.params;
-    const { gallery, ...productData } = req.body;
+    const { gallery, variants, ...productData } = req.body;
     delete productData.id;
     delete productData.created_at;
-    delete productData.updated_at;
+
     if (productData.name) {
       productData.slug = createSlug(productData.name) + "-" + id;
     }
 
-    const success = await Product.update(id, productData);
+    await Product.update(id, productData);
 
-    if (!success) {
-      const exists = await Product.findById(id);
-      if (!exists)
-        return res.status(404).json({ message: "Sản phẩm không tồn tại" });
+    // Cập nhật variants nếu có
+    if (variants && Array.isArray(variants)) {
+      await ProductVariant.deleteByProductId(parseInt(id));
+      for (const v of variants) {
+        await ProductVariant.create({ ...v, product_id: parseInt(id) });
+      }
     }
 
     if (gallery && Array.isArray(gallery)) {
-      const productId = parseInt(id);
-
-      await Gallery.deleteByProductId(productId);
+      await Gallery.deleteByProductId(parseInt(id));
       if (gallery.length > 0) {
-        const galleryPromises = gallery.map((imgUrl: string, index: number) => {
-          return Gallery.create({
-            product_id: productId,
-            image_url: imgUrl,
-            sort_order: index,
-          });
-        });
-        await Promise.all(galleryPromises);
+        await Promise.all(gallery.map((imgUrl: string, index: number) =>
+          Gallery.create({ product_id: parseInt(id), image_url: imgUrl, sort_order: index })
+        ));
       }
     }
 
@@ -231,19 +146,10 @@ export const update = async (
   }
 };
 
-// --- DELETE: Xóa sản phẩm ---
-export const remove = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const remove = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { id } = req.params;
-    const success = await Product.delete(id);
-
-    if (!success) {
-      return res.status(404).json({ message: "Sản phẩm không tồn tại" });
-    }
-
+    const success = await Product.delete(req.params.id);
+    if (!success) return res.status(404).json({ message: "Sản phẩm không tồn tại" });
     return res.json({ message: "Đã xóa sản phẩm thành công" });
   } catch (error) {
     console.error(error);

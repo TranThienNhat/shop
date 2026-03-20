@@ -39,7 +39,7 @@ const ProductsPage: React.FC = () => {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/products?limit=1000");
+      const response = await api.get("/products?limit=1000&status=all");
       setProducts(response.data.data || []);
     } catch (error) {
       console.error("Error loading products:", error);
@@ -60,88 +60,68 @@ const ProductsPage: React.FC = () => {
   };
 
   const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.name
-      .toLowerCase()
-      .includes(searchText.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || product.status === statusFilter;
+    const matchesSearch = product.name.toLowerCase().includes(searchText.toLowerCase());
+    const matchesStatus = statusFilter === "all" || product.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const columns = [
     {
       title: "Hình ảnh",
-      dataIndex: "image_url",
       key: "image",
       width: 80,
-      render: (imageUrl: string) => (
-        <Image
-          src={getImageUrl(imageUrl)}
-          alt="Product"
-          width={50}
-          height={50}
-          className="object-cover rounded"
-          fallback="/placeholder-product.jpg"
-        />
-      ),
+      render: (_: any, record: Product) => {
+        const mainImg = record.galleries?.find((g) => g.is_main === 1) || record.galleries?.[0];
+        return (
+          <Image
+            src={getImageUrl(mainImg?.image_url || "")}
+            alt="Product"
+            width={50}
+            height={50}
+            className="object-cover rounded"
+            fallback="/placeholder-product.jpg"
+          />
+        );
+      },
     },
     {
       title: "Tên sản phẩm",
       dataIndex: "name",
       key: "name",
       render: (name: string, record: Product) => (
-        <Link to={`/admin/products/${record.id}`} className="text-primary">
+        <Link to={`/admin/products/${record.id}/edit`} className="text-primary">
           {name}
         </Link>
       ),
     },
     {
-      title: "Giá",
-      dataIndex: "price",
-      key: "price",
-      render: (price: number) => formatCurrency(price),
-      sorter: (a: Product, b: Product) => a.price - b.price,
-    },
-    {
-      title: "Giá khuyến mãi",
-      dataIndex: "sale_price",
-      key: "sale_price",
-      render: (salePrice: number) =>
-        salePrice ? formatCurrency(salePrice) : "-",
+      title: "Giá (thấp nhất)",
+      dataIndex: "min_price",
+      key: "min_price",
+      render: (price: number) => (price != null ? formatCurrency(price) : "-"),
+      sorter: (a: Product, b: Product) => (a.min_price ?? 0) - (b.min_price ?? 0),
     },
     {
       title: "Tồn kho",
-      dataIndex: "stock_qty",
-      key: "stock_qty",
-      sorter: (a: Product, b: Product) => a.stock_qty - b.stock_qty,
+      dataIndex: "total_stock",
+      key: "total_stock",
+      render: (stock: number) => stock ?? 0,
+      sorter: (a: Product, b: Product) => (a.total_stock ?? 0) - (b.total_stock ?? 0),
     },
     {
-      title: "Đã bán",
-      dataIndex: "sold_qty",
-      key: "sold_qty",
-      sorter: (a: Product, b: Product) => a.sold_qty - b.sold_qty,
+      title: "Biến thể",
+      key: "variants",
+      render: (_: any, record: Product) => record.variants?.length ?? 0,
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status: string) => {
-        const colors = {
-          in_stock: "green",
-          out_of_stock: "red",
-          hidden: "gray",
-        };
-        const labels = {
-          in_stock: "Còn hàng",
-          out_of_stock: "Hết hàng",
-          hidden: "Ẩn",
-        };
-        return (
-          <Tag color={colors[status as keyof typeof colors]}>
-            {labels[status as keyof typeof labels]}
-          </Tag>
-        );
-      },
+      render: (status: string) => (
+        <Tag color={status === "active" ? "green" : "default"}>
+          {status === "active" ? "Hiển thị" : "Ẩn"}
+        </Tag>
+      ),
     },
     {
       title: "Thao tác",
@@ -192,8 +172,7 @@ const ProductsPage: React.FC = () => {
             value={statusFilter}
             onChange={setStatusFilter}>
             <Select.Option value="all">Tất cả</Select.Option>
-            <Select.Option value="in_stock">Còn hàng</Select.Option>
-            <Select.Option value="out_of_stock">Hết hàng</Select.Option>
+            <Select.Option value="active">Hiển thị</Select.Option>
             <Select.Option value="hidden">Ẩn</Select.Option>
           </Select>
           <Button icon={<SearchOutlined />} onClick={loadProducts}>
@@ -213,7 +192,7 @@ const ProductsPage: React.FC = () => {
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} của ${total} sản phẩm`,
           }}
-          scroll={{ x: 1000 }}
+          scroll={{ x: 900 }}
         />
       </Card>
     </div>

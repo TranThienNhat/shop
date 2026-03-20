@@ -10,12 +10,13 @@ import {
   message,
   Row,
   Col,
-  Switch,
+  Space,
+  Divider,
 } from "antd";
-import { ArrowLeftOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../utils/api";
-import { Product, Category, Brand } from "../../types";
+import { Category, Brand } from "../../types";
 import ImageUpload from "../../components/ImageUpload";
 
 const { Title } = Typography;
@@ -30,7 +31,6 @@ const ProductFormPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [product, setProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     loadFormData();
@@ -57,11 +57,9 @@ const ProductFormPage: React.FC = () => {
       setLoading(true);
       const response = await api.get(`/products/${id}`);
       const productData = response.data.data;
-      console.log("Loaded product data:", productData);
-      setProduct(productData);
       form.setFieldsValue({
         ...productData,
-        has_sale_price: !!productData.sale_price,
+        variants: productData.variants || [{ variant_name: "Mặc định", price: 0, stock_qty: 0 }],
       });
     } catch (error) {
       console.error("Error loading product:", error);
@@ -74,11 +72,7 @@ const ProductFormPage: React.FC = () => {
   const handleSubmit = async (values: any) => {
     try {
       setLoading(true);
-      const formData = {
-        ...values,
-        sale_price: values.has_sale_price ? values.sale_price : null,
-      };
-      delete formData.has_sale_price;
+      const formData = { ...values };
 
       if (isEdit) {
         await api.put(`/products/${id}`, formData);
@@ -90,8 +84,7 @@ const ProductFormPage: React.FC = () => {
       navigate("/admin/products");
     } catch (error: any) {
       message.error(
-        error.response?.data?.message ||
-          `Không thể ${isEdit ? "cập nhật" : "tạo"} sản phẩm`
+        error.response?.data?.message || `Không thể ${isEdit ? "cập nhật" : "tạo"} sản phẩm`
       );
     } finally {
       setLoading(false);
@@ -99,189 +92,205 @@ const ProductFormPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          icon={<ArrowLeftOutlined />}
-          onClick={() => navigate("/admin/products")}>
-          Quay lại
-        </Button>
-        <Title level={2} className="!mb-0">
-          {isEdit ? "Sửa sản phẩm" : "Thêm sản phẩm mới"}
-        </Title>
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4">
+          <Button
+            type="text"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate("/admin/products")}
+            className="hover:bg-gray-100"
+          />
+          <Title level={3} className="!mb-0">
+            {isEdit ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
+          </Title>
+        </div>
+        <Space>
+          <Button onClick={() => navigate("/admin/products")}>Hủy</Button>
+          <Button type="primary" onClick={() => form.submit()} loading={loading}>
+            {isEdit ? "Cập nhật" : "Lưu sản phẩm"}
+          </Button>
+        </Space>
       </div>
 
-      <Card>
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          initialValues={{
-            status: "in_stock",
-            stock_qty: 0,
-            sold_qty: 0,
-            has_sale_price: false,
-          }}>
-          <Row gutter={[24, 0]}>
-            <Col xs={24} lg={16}>
-              <Card title="Thông tin cơ bản" className="mb-6">
-                <Form.Item
-                  name="name"
-                  label="Tên sản phẩm"
-                  rules={[
-                    { required: true, message: "Vui lòng nhập tên sản phẩm" },
-                  ]}>
-                  <Input placeholder="Nhập tên sản phẩm" />
-                </Form.Item>
+      {/* Main Form */}
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={{
+          status: "active",
+          variants: [{ variant_name: "Mặc định", price: 0, stock_qty: 0 }],
+        }}
+      >
+        <Row gutter={[24, 24]}>
+          {/* Cột chính (Bên trái) */}
+          <Col xs={24} lg={16} className="space-y-6">
+            
+            {/* 1. Thông tin cơ bản */}
+            <Card title="Thông tin chung" bordered={false} className="shadow-sm">
+              <Form.Item
+                name="name"
+                label="Tên sản phẩm"
+                rules={[{ required: true, message: "Vui lòng nhập tên sản phẩm" }]}
+              >
+                <Input placeholder="Nhập tên sản phẩm (VD: Sữa rửa mặt Cetaphil...)" size="large" />
+              </Form.Item>
 
-                <Form.Item
-                  name="slug"
-                  label="Slug (URL)"
-                  rules={[{ required: true, message: "Vui lòng nhập slug" }]}>
-                  <Input placeholder="san-pham-moi" />
-                </Form.Item>
+              <Form.Item name="description" label="Mô tả chi tiết" className="!mb-0">
+                <TextArea rows={8} placeholder="Nhập mô tả chi tiết về thành phần, công dụng..." />
+              </Form.Item>
+            </Card>
 
-                <Form.Item name="short_description" label="Mô tả ngắn">
-                  <TextArea rows={3} placeholder="Mô tả ngắn về sản phẩm" />
-                </Form.Item>
+            {/* 2. Hình ảnh sản phẩm */}
+            <Card title="Hình ảnh sản phẩm" bordered={false} className="shadow-sm">
+              <Form.Item name="gallery" className="!mb-0">
+                <ImageUpload />
+              </Form.Item>
+            </Card>
 
-                <Form.Item name="content" label="Nội dung chi tiết">
-                  <TextArea rows={6} placeholder="Mô tả chi tiết về sản phẩm" />
-                </Form.Item>
-              </Card>
+            {/* 3. Biến thể sản phẩm */}
+            <Card title="Biến thể sản phẩm (SKU, Giá, Tồn kho)" bordered={false} className="shadow-sm">
+              <Form.List name="variants">
+                {(fields, { add, remove }) => (
+                  <div className="space-y-4">
+                    {fields.map(({ key, name, ...restField }, index) => (
+                      <div key={key} className="p-4 bg-gray-50 border border-gray-200 rounded-lg relative">
+                        {fields.length > 1 && (
+                          <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => remove(name)}
+                            className="absolute top-2 right-2 z-10"
+                          />
+                        )}
+                        
+                        <Row gutter={16}>
+                          <Col xs={24} sm={12}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, "variant_name"]}
+                              label="Tên phân loại"
+                              rules={[{ required: true, message: "Nhập tên phân loại" }]}
+                            >
+                              <Input placeholder="VD: Tuýp 30g, Màu 01..." />
+                            </Form.Item>
+                          </Col>
+                          <Col xs={24} sm={12}>
+                            <Form.Item {...restField} name={[name, "sku"]} label="Mã SKU">
+                              <Input placeholder="VD: SP001-30G" />
+                            </Form.Item>
+                          </Col>
+                        </Row>
 
-              <Card title="Thông tin bổ sung">
-                <Row gutter={[16, 0]}>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="capacity" label="Dung tích">
-                      <Input placeholder="50ml, 100ml..." />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="color" label="Màu sắc">
-                      <Input placeholder="Đỏ, Xanh..." />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item name="ingredients" label="Thành phần">
-                  <TextArea rows={4} placeholder="Danh sách thành phần" />
-                </Form.Item>
-              </Card>
-            </Col>
-
-            <Col xs={24} lg={8}>
-              <Card title="Phân loại & Giá" className="mb-6">
-                <Form.Item
-                  name="category_id"
-                  label="Danh mục"
-                  rules={[
-                    { required: true, message: "Vui lòng chọn danh mục" },
-                  ]}>
-                  <Select placeholder="Chọn danh mục">
-                    {categories.map((category) => (
-                      <Select.Option key={category.id} value={category.id}>
-                        {category.name}
-                      </Select.Option>
+                        <Row gutter={16}>
+                          <Col xs={24} sm={8}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, "price"]}
+                              label="Giá bán"
+                              rules={[{ required: true, message: "Nhập giá bán" }]}
+                            >
+                              <InputNumber
+                                style={{ width: "100%" }}
+                                min={0}
+                                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                                parser={(v) => v!.replace(/,*/g, "")}
+                                addonAfter="VNĐ"
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col xs={24} sm={8}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, "stock_qty"]}
+                              label="Tồn kho"
+                              rules={[{ required: true, message: "Nhập số lượng" }]}
+                            >
+                              <InputNumber style={{ width: "100%" }} min={0} />
+                            </Form.Item>
+                          </Col>
+                          <Col xs={24} sm={8}>
+                            <Form.Item {...restField} name={[name, "variant_image"]} label="Ảnh biến thể (URL)">
+                              <Input placeholder="https://..." />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </div>
                     ))}
-                  </Select>
-                </Form.Item>
+                    
+                    <Button
+                      type="dashed"
+                      onClick={() => add({ variant_name: "", price: 0, stock_qty: 0 })}
+                      block
+                      icon={<PlusOutlined />}
+                      size="large"
+                      className="mt-2"
+                    >
+                      Thêm phân loại mới
+                    </Button>
+                  </div>
+                )}
+              </Form.List>
+            </Card>
 
-                <Form.Item name="brand_id" label="Thương hiệu">
-                  <Select placeholder="Chọn thương hiệu">
-                    {brands.map((brand) => (
-                      <Select.Option key={brand.id} value={brand.id}>
-                        {brand.name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+          </Col>
 
-                <Form.Item
-                  name="price"
-                  label="Giá gốc"
-                  rules={[{ required: true, message: "Vui lòng nhập giá" }]}>
-                  <InputNumber
-                    style={{ width: "100%" }}
-                    placeholder="0"
-                    formatter={(value) =>
-                      `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                    }
-                    parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
-                  />
-                </Form.Item>
+          {/* Cột phụ (Bên phải) */}
+          <Col xs={24} lg={8} className="space-y-6">
+            
+            {/* Trạng thái */}
+            <Card title="Trạng thái" bordered={false} className="shadow-sm">
+              <Form.Item name="status" className="!mb-0">
+                <Select size="large">
+                  <Select.Option value="active">
+                    <span className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                      Hiển thị
+                    </span>
+                  </Select.Option>
+                  <Select.Option value="hidden">
+                    <span className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                      Ẩn sản phẩm
+                    </span>
+                  </Select.Option>
+                </Select>
+              </Form.Item>
+            </Card>
 
-                <Form.Item name="has_sale_price" valuePropName="checked">
-                  <Switch /> Có giá khuyến mãi
-                </Form.Item>
+            {/* Phân loại */}
+            <Card title="Tổ chức sản phẩm" bordered={false} className="shadow-sm">
+              <Form.Item
+                name="category_id"
+                label="Danh mục"
+                rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
+              >
+                <Select placeholder="Chọn danh mục" size="large" showSearch optionFilterProp="children">
+                  {categories.map((category) => (
+                    <Select.Option key={category.id} value={category.id}>
+                      {category.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
 
-                <Form.Item
-                  noStyle
-                  shouldUpdate={(prevValues, currentValues) =>
-                    prevValues.has_sale_price !== currentValues.has_sale_price
-                  }>
-                  {({ getFieldValue }) =>
-                    getFieldValue("has_sale_price") ? (
-                      <Form.Item name="sale_price" label="Giá khuyến mãi">
-                        <InputNumber
-                          style={{ width: "100%" }}
-                          placeholder="0"
-                          formatter={(value) =>
-                            `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                          }
-                          parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
-                        />
-                      </Form.Item>
-                    ) : null
-                  }
-                </Form.Item>
+              <Form.Item name="brand_id" label="Thương hiệu" className="!mb-0">
+                <Select placeholder="Chọn thương hiệu" size="large" showSearch optionFilterProp="children">
+                  {brands.map((brand) => (
+                    <Select.Option key={brand.id} value={brand.id}>
+                      {brand.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Card>
 
-                <Form.Item name="cost" label="Giá vốn">
-                  <InputNumber
-                    style={{ width: "100%" }}
-                    placeholder="0"
-                    formatter={(value) =>
-                      `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                    }
-                    parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
-                  />
-                </Form.Item>
-              </Card>
-
-              <Card title="Kho hàng & Trạng thái" className="mb-6">
-                <Form.Item name="stock_qty" label="Số lượng tồn kho">
-                  <InputNumber style={{ width: "100%" }} min={0} />
-                </Form.Item>
-
-                <Form.Item name="sold_qty" label="Đã bán">
-                  <InputNumber style={{ width: "100%" }} min={0} />
-                </Form.Item>
-
-                <Form.Item name="status" label="Trạng thái">
-                  <Select>
-                    <Select.Option value="in_stock">Còn hàng</Select.Option>
-                    <Select.Option value="out_of_stock">Hết hàng</Select.Option>
-                    <Select.Option value="hidden">Ẩn</Select.Option>
-                  </Select>
-                </Form.Item>
-              </Card>
-
-              <Card title="Hình ảnh">
-                <Form.Item name="image_url" label="Hình ảnh sản phẩm">
-                  <ImageUpload />
-                </Form.Item>
-              </Card>
-            </Col>
-          </Row>
-
-          <div className="flex justify-end gap-4 mt-6">
-            <Button onClick={() => navigate("/admin/products")}>Hủy</Button>
-            <Button type="primary" htmlType="submit" loading={loading}>
-              {isEdit ? "Cập nhật" : "Tạo mới"}
-            </Button>
-          </div>
-        </Form>
-      </Card>
+          </Col>
+        </Row>
+      </Form>
     </div>
   );
 };

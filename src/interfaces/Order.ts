@@ -1,17 +1,11 @@
 export interface IOrder {
   id?: number;
   user_id?: number;
-  code: string;
-  subtotal?: number;
+  order_code: string;
+  total_amount: number;
   discount_amount?: number;
-  total: number;
-  payment_method: string;
-  shipping_name: string;
-  shipping_phone: string;
-  shipping_address: string;
-  shipping_email?: string;
-  coupon_code?: string;
+  final_amount: number;
   coupon_id?: number;
-  status?: string;
+  status?: "pending" | "processing" | "shipped" | "completed" | "cancelled";
   created_at?: Date;
 }

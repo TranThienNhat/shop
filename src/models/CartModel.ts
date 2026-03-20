@@ -6,172 +6,104 @@ class CartModel extends BaseModel<ICart> {
     super("carts");
   }
 
-  // Tìm giỏ hàng theo user hoặc session
   async findCart(userId?: number, sessionId?: string) {
-    if (userId) return this.findOne({ user_id: userId });
-    if (sessionId) return this.findOne({ session_id: sessionId });
+    if (userId) return this.findOne({ user_id: userId } as any);
+    if (sessionId) return this.findOne({ session_id: sessionId } as any);
     return null;
   }
 
-  // Override create method to ensure no coupon is applied initially
-  async create(data: Partial<ICart>) {
-    const cartData = {
-      ...data,
-      coupon_code: null,
-      discount_amount: 0,
-    };
-    return super.create(cartData);
-  }
-
-  // Lấy chi tiết item trong giỏ (Join với Product)
+  // Lấy items trong giỏ, join với product_variants và products
   async getCartItems(cartId: number) {
     const sql = `
-            SELECT ci.id, ci.product_id, ci.quantity, 
-                   p.name, p.price, p.sale_price, p.image_url, p.slug, p.stock_qty, p.status
-            FROM cart_items ci
-            JOIN products p ON ci.product_id = p.id
-            WHERE ci.cart_id = ? AND p.status != 'hidden'
-        `;
+      SELECT ci.id, ci.variant_id, ci.quantity,
+             pv.sku, pv.variant_name, pv.price, pv.stock_qty, pv.variant_image,
+             p.id as product_id, p.name, p.slug, p.status,
+             (SELECT image_url FROM product_galleries WHERE product_id = p.id ORDER BY is_main DESC, sort_order ASC LIMIT 1) as image_url
+      FROM cart_items ci
+      JOIN product_variants pv ON ci.variant_id = pv.id
+      JOIN products p ON pv.product_id = p.id
+      WHERE ci.cart_id = ? AND p.status != 'hidden'
+    `;
     const [rows] = await this.db.query(sql, [cartId]);
     return rows as any[];
   }
 
-  // Thêm item vào giỏ (Nếu có rồi thì tăng số lượng)
-  async addItem(cartId: number, productId: number, quantity: number) {
-    // Validate input
-    if (!cartId || !productId || !quantity) {
-      throw new Error(
-        "Missing required parameters: cartId, productId, quantity"
-      );
+  async addItem(cartId: number, variantId: number, quantity: number) {
+    if (!cartId || !variantId || !quantity) {
+      throw new Error("Missing required parameters: cartId, variantId, quantity");
     }
 
-    if (isNaN(cartId) || isNaN(productId) || isNaN(quantity)) {
-      throw new Error(
-        "Invalid parameters: cartId, productId, quantity must be numbers"
-      );
-    }
-
-    // Check if product exists and is available
-    const [productCheck]: any[] = await this.db.query(
-      "SELECT id, stock_qty, status FROM products WHERE id = ?",
-      [productId]
+    const [variantCheck]: any[] = await this.db.query(
+      `SELECT pv.id, pv.stock_qty, p.status 
+       FROM product_variants pv 
+       JOIN products p ON pv.product_id = p.id 
+       WHERE pv.id = ?`,
+      [variantId]
     );
 
-    if (productCheck.length === 0) {
-      throw new Error(`Product with ID ${productId} does not exist`);
-    }
+    if (!variantCheck.length) throw new Error(`Variant ID ${variantId} không tồn tại`);
 
-    const product = productCheck[0];
+    const variant = variantCheck[0];
+    if (variant.status === "hidden") throw new Error("Sản phẩm không còn bán");
+    if (variant.stock_qty < quantity) throw new Error(`Không đủ hàng. Còn: ${variant.stock_qty}`);
 
-    // Check product status
-    if (product.status === "hidden") {
-      throw new Error("Product is not available");
-    }
-
-    if (product.status === "out_of_stock") {
-      throw new Error("Product is out of stock");
-    }
-
-    // Check stock quantity
-    if (product.stock_qty < quantity) {
-      throw new Error(`Not enough stock. Available: ${product.stock_qty}`);
-    }
-
-    // Check item tồn tại
     const [existing]: any[] = await this.db.query(
-      "SELECT * FROM cart_items WHERE cart_id = ? AND product_id = ?",
-      [cartId, productId]
+      "SELECT * FROM cart_items WHERE cart_id = ? AND variant_id = ?",
+      [cartId, variantId]
     );
 
     if (existing.length > 0) {
-      // Update quantity - check total quantity against stock
       const newQty = existing[0].quantity + quantity;
-      if (newQty > product.stock_qty) {
-        throw new Error(
-          `Not enough stock. Available: ${product.stock_qty}, requested: ${newQty}`
-        );
+      if (newQty > variant.stock_qty) {
+        throw new Error(`Không đủ hàng. Còn: ${variant.stock_qty}, yêu cầu: ${newQty}`);
       }
-
-      await this.db.query("UPDATE cart_items SET quantity = ? WHERE id = ?", [
-        newQty,
-        existing[0].id,
-      ]);
+      await this.db.query("UPDATE cart_items SET quantity = ? WHERE id = ?", [newQty, existing[0].id]);
     } else {
-      // Insert new
       await this.db.query(
-        "INSERT INTO cart_items (cart_id, product_id, quantity) VALUES (?, ?, ?)",
-        [cartId, productId, quantity]
+        "INSERT INTO cart_items (cart_id, variant_id, quantity) VALUES (?, ?, ?)",
+        [cartId, variantId, quantity]
       );
     }
   }
 
-  // Cập nhật số lượng item trong giỏ
-  async updateItemQuantity(
-    cartId: number,
-    productId: number,
-    quantity: number
-  ) {
-    // Validate input
-    if (!cartId || !productId || quantity < 1) {
-      throw new Error("Invalid parameters");
-    }
+  async updateItemQuantity(cartId: number, variantId: number, quantity: number) {
+    if (!cartId || !variantId || quantity < 1) throw new Error("Dữ liệu không hợp lệ");
 
-    // Check product stock
-    const [productCheck]: any[] = await this.db.query(
-      "SELECT stock_qty, status FROM products WHERE id = ?",
-      [productId]
+    const [variantCheck]: any[] = await this.db.query(
+      "SELECT stock_qty FROM product_variants WHERE id = ?",
+      [variantId]
     );
-
-    if (productCheck.length === 0) {
-      throw new Error("Product not found");
+    if (!variantCheck.length) throw new Error("Variant không tồn tại");
+    if (variantCheck[0].stock_qty < quantity) {
+      throw new Error(`Không đủ hàng. Còn: ${variantCheck[0].stock_qty}`);
     }
 
-    const product = productCheck[0];
-
-    if (product.status !== "in_stock") {
-      throw new Error("Product is not available");
-    }
-
-    if (product.stock_qty < quantity) {
-      throw new Error(`Not enough stock. Available: ${product.stock_qty}`);
-    }
-
-    // Update quantity
     await this.db.query(
-      "UPDATE cart_items SET quantity = ? WHERE cart_id = ? AND product_id = ?",
-      [quantity, cartId, productId]
+      "UPDATE cart_items SET quantity = ? WHERE cart_id = ? AND variant_id = ?",
+      [quantity, cartId, variantId]
     );
   }
 
-  // Xóa item
-  async removeItem(cartId: number, productId: number) {
+  async removeItem(cartId: number, variantId: number) {
     await this.db.query(
-      "DELETE FROM cart_items WHERE cart_id = ? AND product_id = ?",
-      [cartId, productId]
+      "DELETE FROM cart_items WHERE cart_id = ? AND variant_id = ?",
+      [cartId, variantId]
     );
   }
 
-  // Áp dụng coupon cho giỏ hàng
-  async applyCoupon(cartId: number, couponCode: string) {
-    // Get cart total first
+  // Áp dụng coupon: lưu coupon_id vào carts
+  async applyCoupon(cartId: number, couponCode: string, userId?: number) {
     const items = await this.getCartItems(cartId);
-    const subtotal = items.reduce((sum, item) => {
-      const price = item.sale_price || item.price;
-      return sum + price * item.quantity;
-    }, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-    // Import CouponModel here to avoid circular dependency
     const CouponModel = require("./CouponModel").default;
-    const validation = await CouponModel.validateCoupon(couponCode, subtotal);
+    const validation = await CouponModel.validateCoupon(couponCode, subtotal, userId);
 
-    if (!validation.isValid) {
-      throw new Error(validation.message);
-    }
+    if (!validation.isValid) throw new Error(validation.message);
 
-    // Store coupon info in cart
     await this.db.query(
-      "UPDATE carts SET coupon_code = ?, discount_amount = ? WHERE id = ?",
-      [couponCode, validation.discount, cartId]
+      "UPDATE carts SET coupon_id = ? WHERE id = ?",
+      [validation.coupon.id, cartId]
     );
 
     return {
@@ -182,44 +114,52 @@ class CartModel extends BaseModel<ICart> {
     };
   }
 
-  // Xóa coupon khỏi giỏ hàng
   async removeCoupon(cartId: number) {
-    await this.db.query(
-      "UPDATE carts SET coupon_code = NULL, discount_amount = 0 WHERE id = ?",
-      [cartId]
-    );
+    await this.db.query("UPDATE carts SET coupon_id = NULL WHERE id = ?", [cartId]);
   }
 
-  // Lấy thông tin giỏ hàng với coupon
   async getCartWithCoupon(cartId: number) {
     const [cartInfo]: any[] = await this.db.query(
-      "SELECT coupon_code, discount_amount FROM carts WHERE id = ?",
+      `SELECT c.coupon_id, cp.code as coupon_code, cp.type as coupon_type, 
+              cp.value as coupon_value, cp.max_discount_value
+       FROM carts c
+       LEFT JOIN coupons cp ON c.coupon_id = cp.id
+       WHERE c.id = ?`,
       [cartId]
     );
 
     const items = await this.getCartItems(cartId);
-    const subtotal = items.reduce((sum, item) => {
-      const price = item.sale_price || item.price;
-      return sum + price * item.quantity;
-    }, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     const cart = cartInfo[0] || {};
-    const discount = cart.discount_amount || 0;
-    const total = subtotal - discount;
+    let discount = 0;
+
+    if (cart.coupon_id) {
+      if (cart.coupon_type === "percentage") {
+        discount = (subtotal * cart.coupon_value) / 100;
+        if (cart.max_discount_value && discount > cart.max_discount_value) {
+          discount = cart.max_discount_value;
+        }
+      } else {
+        discount = cart.coupon_value || 0;
+      }
+      if (discount > subtotal) discount = subtotal;
+    }
 
     return {
       items,
       subtotal,
       discount,
-      total,
-      couponCode: cart.coupon_code,
+      total: subtotal - discount,
+      couponCode: cart.coupon_code || null,
+      couponId: cart.coupon_id || null,
       itemCount: items.length,
     };
   }
 
-  // Xóa sạch giỏ (Sau khi đặt hàng)
   async clearCart(cartId: number) {
     await this.db.query("DELETE FROM cart_items WHERE cart_id = ?", [cartId]);
+    await this.db.query("UPDATE carts SET coupon_id = NULL WHERE id = ?", [cartId]);
   }
 }
 

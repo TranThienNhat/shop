@@ -28,17 +28,15 @@ const { RangePicker } = DatePicker;
 interface Coupon {
   id: number;
   code: string;
-  name: string;
-  description: string;
   type: "percentage" | "fixed_amount";
   value: number;
   min_order_value?: number;
   max_discount_value?: number;
-  quantity?: number;
+  total_limit?: number;
   used_count: number;
   start_date?: string;
   end_date?: string;
-  status: "active" | "inactive" | "expired";
+  is_active: number;
   created_at: string;
 }
 
@@ -137,11 +135,6 @@ const CouponManagement: React.FC = () => {
       ),
     },
     {
-      title: "Tên",
-      dataIndex: "name",
-      key: "name",
-    },
-    {
       title: "Loại",
       dataIndex: "type",
       key: "type",
@@ -172,11 +165,11 @@ const CouponManagement: React.FC = () => {
     },
     {
       title: "Số lượng",
-      dataIndex: "quantity",
-      key: "quantity",
-      render: (quantity: number, record: Coupon) => (
+      dataIndex: "total_limit",
+      key: "total_limit",
+      render: (total_limit: number, record: Coupon) => (
         <span>
-          {record.used_count || 0} / {quantity || "∞"}
+          {record.used_count || 0} / {total_limit || "∞"}
         </span>
       ),
     },
@@ -196,25 +189,13 @@ const CouponManagement: React.FC = () => {
     },
     {
       title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      render: (status: string) => {
-        const colors = {
-          active: "green",
-          inactive: "red",
-          expired: "gray",
-        };
-        const labels = {
-          active: "Hoạt động",
-          inactive: "Tạm dừng",
-          expired: "Hết hạn",
-        };
-        return (
-          <Tag color={colors[status as keyof typeof colors]}>
-            {labels[status as keyof typeof labels]}
-          </Tag>
-        );
-      },
+      dataIndex: "is_active",
+      key: "is_active",
+      render: (is_active: number) => (
+        <Tag color={is_active ? "green" : "red"}>
+          {is_active ? "Hoạt động" : "Tạm dừng"}
+        </Tag>
+      ),
     },
     {
       title: "Thao tác",
@@ -299,17 +280,6 @@ const CouponManagement: React.FC = () => {
           </Form.Item>
 
           <Form.Item
-            name="name"
-            label="Tên mã giảm giá"
-            rules={[{ required: true, message: "Vui lòng nhập tên" }]}>
-            <Input placeholder="VD: Chào mừng khách hàng mới" />
-          </Form.Item>
-
-          <Form.Item name="description" label="Mô tả">
-            <Input.TextArea placeholder="Mô tả chi tiết về mã giảm giá" />
-          </Form.Item>
-
-          <Form.Item
             name="type"
             label="Loại giảm giá"
             rules={[{ required: true, message: "Vui lòng chọn loại" }]}>
@@ -356,7 +326,7 @@ const CouponManagement: React.FC = () => {
           </Form.Item>
 
           <Form.Item
-            name="quantity"
+            name="total_limit"
             label="Số lượng sử dụng"
             tooltip="Để trống nếu không giới hạn">
             <InputNumber min={1} className="w-full" placeholder="VD: 100" />
@@ -370,10 +340,10 @@ const CouponManagement: React.FC = () => {
             />
           </Form.Item>
 
-          <Form.Item name="status" label="Trạng thái" initialValue="active">
+          <Form.Item name="is_active" label="Trạng thái" initialValue={1}>
             <Select>
-              <Option value="active">Hoạt động</Option>
-              <Option value="inactive">Tạm dừng</Option>
+              <Option value={1}>Hoạt động</Option>
+              <Option value={0}>Tạm dừng</Option>
             </Select>
           </Form.Item>
 

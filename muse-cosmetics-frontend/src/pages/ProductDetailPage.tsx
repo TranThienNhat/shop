@@ -12,9 +12,10 @@ import {
   Spin,
   message,
   Breadcrumb,
+  Select,
 } from "antd";
 import { ArrowLeft, ShoppingCart, Heart, Share2 } from "lucide-react";
-import { Product, Review } from "../types";
+import { Product, ProductVariant, Review } from "../types";
 import api from "../utils/api";
 import { getImageUrl, formatCurrency } from "../utils/helpers";
 import { useCart } from "../contexts/CartContext";
@@ -32,26 +33,35 @@ const ProductDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState<string>("");
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
-    if (slug) {
-      loadProduct();
-    }
+    if (slug) loadProduct();
   }, [slug]);
 
   const loadProduct = async () => {
     try {
       setLoading(true);
       const [productRes, reviewsRes] = await Promise.all([
-        api.get(`/products/slug/${slug}`), // Sử dụng endpoint slug
-        api.get(`/reviews/product/slug/${slug}`), // Sử dụng review endpoint slug
+        api.get(`/products/slug/${slug}`),
+        api.get(`/reviews/product/slug/${slug}`),
       ]);
 
-      const productData = productRes.data.data; // Sửa để lấy đúng data
+      const productData = productRes.data.data;
       setProduct(productData);
-      setSelectedImage(productData.image_url);
-      setReviews(reviewsRes.data || []); // Reviews trả về trực tiếp array
+
+      // Chọn variant đầu tiên mặc định
+      if (productData.variants?.length > 0) {
+        setSelectedVariant(productData.variants[0]);
+      }
+
+      // Ảnh đầu tiên từ galleries hoặc placeholder
+      if (productData.galleries?.length > 0) {
+        setSelectedImage(productData.galleries[0].image_url);
+      }
+
+      setReviews(reviewsRes.data || []);
     } catch (error: any) {
       console.error("Error loading product:", error);
       if (error.response?.status === 404) {
@@ -64,29 +74,24 @@ const ProductDetailPage: React.FC = () => {
   };
 
   const handleAddToCart = async () => {
-    if (!product) {
-      message.error("Không tìm thấy thông tin sản phẩm");
+    if (!product || !selectedVariant) {
+      message.error("Vui lòng chọn phiên bản sản phẩm");
       return;
     }
 
-    if (!product.id) {
-      message.error("ID sản phẩm không hợp lệ");
-      return;
-    }
-
-    if (product.stock_qty <= 0) {
+    if (selectedVariant.stock_qty <= 0) {
       message.error("Sản phẩm đã hết hàng");
       return;
     }
 
-    if (quantity > product.stock_qty) {
-      message.error(`Chỉ còn ${product.stock_qty} sản phẩm trong kho`);
+    if (quantity > selectedVariant.stock_qty) {
+      message.error(`Chỉ còn ${selectedVariant.stock_qty} sản phẩm trong kho`);
       return;
     }
 
     try {
       setAddingToCart(true);
-      await addToCart(product.id, quantity);
+      await addToCart(selectedVariant.id, quantity);
     } catch (error) {
       console.error("Error adding to cart:", error);
     } finally {
@@ -96,8 +101,11 @@ const ProductDetailPage: React.FC = () => {
 
   const averageRating =
     reviews.length > 0
-      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
       : 0;
+
+  const currentPrice = selectedVariant?.price ?? product?.min_price ?? 0;
+  const currentStock = selectedVariant?.stock_qty ?? 0;
 
   if (loading) {
     return (
@@ -120,15 +128,11 @@ const ProductDetailPage: React.FC = () => {
     );
   }
 
-  const allImages = [
-    product.image_url,
-    ...product.galleries.map((g) => g.image_url),
-  ];
+  const allImages = product.galleries?.map((g) => g.image_url) || [];
 
   return (
     <div className="bg-background min-h-screen">
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
-        {/* Breadcrumb */}
         <Breadcrumb className="mb-6">
           <Breadcrumb.Item>
             <Button
@@ -147,39 +151,28 @@ const ProductDetailPage: React.FC = () => {
           {/* Product Images */}
           <Col xs={24} lg={12}>
             <div className="space-y-4">
-              {/* Main Image */}
               <div className="aspect-square overflow-hidden rounded-lg bg-white">
                 <img
-                  src={getImageUrl(selectedImage)}
+                  src={getImageUrl(selectedImage || allImages[0])}
                   alt={product.name}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src =
-                      "/placeholder-product.jpg";
-                  }}
+                  onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder-product.jpg"; }}
                 />
               </div>
-
-              {/* Thumbnail Images */}
               {allImages.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto">
                   {allImages.map((image, index) => (
                     <button
                       key={index}
                       className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
-                        selectedImage === image
-                          ? "border-primary"
-                          : "border-gray-200 hover:border-gray-300"
+                        selectedImage === image ? "border-primary" : "border-gray-200 hover:border-gray-300"
                       }`}
                       onClick={() => setSelectedImage(image)}>
                       <img
                         src={getImageUrl(image)}
                         alt={`${product.name} ${index + 1}`}
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src =
-                            "/placeholder-product.jpg";
-                        }}
+                        onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder-product.jpg"; }}
                       />
                     </button>
                   ))}
@@ -196,117 +189,62 @@ const ProductDetailPage: React.FC = () => {
                   {product.name}
                 </Title>
 
-                {/* Rating */}
                 <div className="flex items-center gap-4 mb-4">
                   <Rate disabled value={averageRating} />
                   <span className="text-gray">({reviews.length} đánh giá)</span>
                 </div>
 
-                {/* Stock Status */}
-                <div className="flex items-center gap-2">
+                {/* Giá */}
+                <div className="mb-4">
+                  <Title level={2} className="!text-primary !mb-0">
+                    {formatCurrency(currentPrice)}
+                  </Title>
+                </div>
+
+                {/* Tình trạng kho */}
+                <div className="flex items-center gap-2 mb-4">
                   <span className="text-gray">Tình trạng:</span>
-                  <span
-                    className={`font-medium ${
-                      product.stock_qty > 0 ? "text-green-600" : "text-red-600"
-                    }`}>
-                    {product.stock_qty > 0
-                      ? `Còn ${product.stock_qty} sản phẩm`
-                      : "Hết hàng"}
+                  <span className={`font-medium ${currentStock > 0 ? "text-green-600" : "text-red-600"}`}>
+                    {currentStock > 0 ? `Còn ${currentStock} sản phẩm` : "Hết hàng"}
                   </span>
                 </div>
-
-                {/* Price */}
-                <div className="mb-6">
-                  {product.sale_price ? (
-                    <div className="space-y-1">
-                      <Title level={2} className="!text-primary !mb-0">
-                        {formatCurrency(parseFloat(product.sale_price))}
-                      </Title>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray line-through">
-                          {formatCurrency(parseFloat(product.price))}
-                        </span>
-                        <span className="bg-red-100 text-red-600 px-2 py-1 rounded text-sm font-medium">
-                          Giảm{" "}
-                          {Math.round(
-                            (1 -
-                              parseFloat(product.sale_price) /
-                                parseFloat(product.price)) *
-                              100
-                          )}
-                          %
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <Title level={2} className="!text-primary !mb-0">
-                      {formatCurrency(parseFloat(product.price))}
-                    </Title>
-                  )}
-                </div>
               </div>
 
-              {/* Short Description */}
-              <div>
-                <Paragraph className="text-gray text-lg leading-relaxed">
-                  {product.short_description}
-                </Paragraph>
-              </div>
-
-              {/* Product Specifications */}
-              {(product.capacity || product.color || product.ingredients) && (
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <Title level={5} className="!mb-3">
-                    Thông số sản phẩm
-                  </Title>
-                  <div className="space-y-2">
-                    {product.capacity && (
-                      <div className="flex">
-                        <span className="w-24 text-gray font-medium">
-                          Dung tích:
-                        </span>
-                        <span className="text-charcoal">
-                          {product.capacity}
-                        </span>
-                      </div>
-                    )}
-                    {product.color && (
-                      <div className="flex">
-                        <span className="w-24 text-gray font-medium">
-                          Màu sắc:
-                        </span>
-                        <span className="text-charcoal">{product.color}</span>
-                      </div>
-                    )}
-                    {product.ingredients && (
-                      <div className="flex">
-                        <span className="w-24 text-gray font-medium">
-                          Thành phần:
-                        </span>
-                        <span className="text-charcoal">
-                          {product.ingredients}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+              {/* Chọn variant */}
+              {product.variants && product.variants.length > 1 && (
+                <div>
+                  <span className="text-charcoal font-medium block mb-2">Phiên bản:</span>
+                  <Select
+                    value={selectedVariant?.id}
+                    onChange={(variantId) => {
+                      const v = product.variants.find((v) => v.id === variantId);
+                      if (v) setSelectedVariant(v);
+                    }}
+                    style={{ width: "100%" }}
+                    size="large">
+                    {product.variants.map((v) => (
+                      <Select.Option key={v.id} value={v.id} disabled={v.stock_qty === 0}>
+                        {v.variant_name || v.sku || `Variant #${v.id}`}
+                        {v.stock_qty === 0 ? " (Hết hàng)" : ` - ${formatCurrency(v.price)}`}
+                      </Select.Option>
+                    ))}
+                  </Select>
                 </div>
               )}
 
-              {/* Add to Cart */}
+              {/* Số lượng & Thêm vào giỏ */}
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <span className="text-charcoal font-medium">Số lượng:</span>
                   <InputNumber
                     min={1}
-                    max={product.stock_qty}
+                    max={currentStock}
                     value={quantity}
                     onChange={(value) => setQuantity(value || 1)}
                     className="w-24"
-                    disabled={product.stock_qty === 0}
+                    disabled={currentStock === 0}
                   />
-                  <span className="text-gray text-sm">
-                    (Còn {product.stock_qty} sản phẩm)
-                  </span>
+                  <span className="text-gray text-sm">(Còn {currentStock} sản phẩm)</span>
                 </div>
 
                 <div className="flex gap-4">
@@ -316,28 +254,21 @@ const ProductDetailPage: React.FC = () => {
                     icon={<ShoppingCart size={20} />}
                     loading={addingToCart}
                     onClick={handleAddToCart}
-                    disabled={product.stock_qty === 0}
+                    disabled={currentStock === 0}
                     className="bg-primary border-primary flex-1">
-                    {product.stock_qty === 0 ? "Hết hàng" : "Thêm vào giỏ hàng"}
+                    {currentStock === 0 ? "Hết hàng" : "Thêm vào giỏ hàng"}
                   </Button>
 
-                  <Button
-                    size="large"
-                    icon={<Heart size={20} />}
-                    className="border-primary text-primary hover:bg-primary hover:text-white">
+                  <Button size="large" icon={<Heart size={20} />} className="border-primary text-primary">
                     Yêu thích
                   </Button>
 
-                  <Button
-                    size="large"
-                    icon={<Share2 size={20} />}
-                    className="border-gray-300">
+                  <Button size="large" icon={<Share2 size={20} />} className="border-gray-300">
                     Chia sẻ
                   </Button>
                 </div>
               </div>
 
-              {/* Product Features */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <ul className="space-y-2 text-gray">
                   <li>✓ Chính hãng 100%</li>
@@ -350,51 +281,19 @@ const ProductDetailPage: React.FC = () => {
           </Col>
         </Row>
 
-        {/* Product Details Tabs */}
+        {/* Tabs mô tả & đánh giá */}
         <div className="mt-16">
           <Tabs defaultActiveKey="description" size="large">
             <TabPane tab="Mô tả chi tiết" key="description">
               <div className="bg-white p-8 rounded-lg">
-                <div className="prose max-w-none">
-                  <Paragraph className="text-gray text-base leading-relaxed whitespace-pre-line">
-                    {product.content || product.short_description}
-                  </Paragraph>
-
-                  {product.ingredients && (
-                    <div className="mt-6">
-                      <Title level={4}>Thành phần chính:</Title>
-                      <Paragraph className="text-gray">
-                        {product.ingredients}
-                      </Paragraph>
-                    </div>
-                  )}
-
-                  <div className="mt-6">
-                    <Title level={4}>Hướng dẫn sử dụng:</Title>
-                    <ul className="text-gray space-y-1">
-                      <li>• Làm sạch da trước khi sử dụng</li>
-                      <li>• Thoa đều sản phẩm lên da</li>
-                      <li>• Massage nhẹ nhàng để sản phẩm thấm sâu</li>
-                      <li>• Sử dụng 2 lần/ngày để đạt hiệu quả tốt nhất</li>
-                    </ul>
-                  </div>
-
-                  <div className="mt-6">
-                    <Title level={4}>Lưu ý:</Title>
-                    <ul className="text-gray space-y-1">
-                      <li>• Tránh tiếp xúc với mắt</li>
-                      <li>• Ngưng sử dụng nếu có dấu hiệu kích ứng</li>
-                      <li>• Bảo quản nơi khô ráo, thoáng mát</li>
-                      <li>• Tránh ánh nắng trực tiếp</li>
-                    </ul>
-                  </div>
-                </div>
+                <Paragraph className="text-gray text-base leading-relaxed whitespace-pre-line">
+                  {product.description}
+                </Paragraph>
               </div>
             </TabPane>
 
             <TabPane tab={`Đánh giá (${reviews.length})`} key="reviews">
               <div className="space-y-6">
-                {/* Rating Summary */}
                 <div className="bg-white p-6 rounded-lg">
                   <div className="flex items-center gap-6">
                     <div className="text-center">
@@ -402,14 +301,11 @@ const ProductDetailPage: React.FC = () => {
                         {averageRating.toFixed(1)}
                       </Title>
                       <Rate disabled value={averageRating} />
-                      <p className="text-gray mt-1">
-                        {reviews.length} đánh giá
-                      </p>
+                      <p className="text-gray mt-1">{reviews.length} đánh giá</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Reviews List */}
                 <div className="space-y-4">
                   {reviews.length > 0 ? (
                     reviews.map((review) => (
@@ -417,32 +313,20 @@ const ProductDetailPage: React.FC = () => {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-medium text-charcoal">
-                                {review.user_name}
-                              </p>
-                              <Rate
-                                disabled
-                                value={review.rating}
-                                className="text-sm"
-                              />
+                              <p className="font-medium text-charcoal">{review.user_name}</p>
+                              <Rate disabled value={review.rating} className="text-sm" />
                             </div>
                             <span className="text-gray text-sm">
-                              {new Date(review.created_at).toLocaleDateString(
-                                "vi-VN"
-                              )}
+                              {new Date(review.created_at).toLocaleDateString("vi-VN")}
                             </span>
                           </div>
-                          <Paragraph className="text-gray mb-0">
-                            {review.comment}
-                          </Paragraph>
+                          <Paragraph className="text-gray mb-0">{review.comment}</Paragraph>
                         </div>
                       </Card>
                     ))
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-gray">
-                        Chưa có đánh giá nào cho sản phẩm này
-                      </p>
+                      <p className="text-gray">Chưa có đánh giá nào cho sản phẩm này</p>
                     </div>
                   )}
                 </div>

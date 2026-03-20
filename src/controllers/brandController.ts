@@ -22,7 +22,7 @@ export const create = async (
   res: Response
 ): Promise<Response> => {
   try {
-    const { name, image_url, description } = req.body as IBrand;
+    const { name } = req.body as IBrand;
 
     if (!name)
       return res.status(400).json({ message: "Tên thương hiệu là bắt buộc" });
@@ -33,7 +33,7 @@ export const create = async (
     if (exists)
       return res.status(409).json({ message: "Thương hiệu đã tồn tại" });
 
-    const newId = await Brand.create({ name, slug, image_url, description });
+    const newId = await Brand.create({ name, slug });
 
     return res
       .status(201)
@@ -50,9 +50,9 @@ export const update = async (
 ): Promise<Response> => {
   try {
     const { id } = req.params;
-    const { name, image_url, description } = req.body as IBrand;
+    const { name } = req.body as IBrand;
 
-    const dataToUpdate: Partial<IBrand> = { image_url, description };
+    const dataToUpdate: Partial<IBrand> = {};
 
     if (name) {
       dataToUpdate.name = name;

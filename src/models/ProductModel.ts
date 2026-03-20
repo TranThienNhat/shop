@@ -1,48 +1,57 @@
 import { BaseModel } from "../core/BaseModel";
-import { IProduct } from "../interfaces/Product";
+import { IProduct, IProductVariant } from "../interfaces/Product";
 
 class ProductModel extends BaseModel<IProduct> {
   constructor() {
     super("products");
   }
 
-  // Override findAll để hỗ trợ search và price range
-  async findAll(options: any = {}): Promise<IProduct[]> {
-    let sql = `SELECT * FROM ${this.tableName} WHERE 1=1`;
+  // Lấy danh sách sản phẩm kèm giá thấp nhất từ variants
+  async findAll(options: any = {}): Promise<any[]> {
+    let sql = `
+      SELECT p.*, 
+             MIN(pv.price) as min_price,
+             MAX(pv.price) as max_price,
+             SUM(pv.stock_qty) as total_stock,
+             c.name as category_name,
+             b.name as brand_name
+      FROM products p
+      LEFT JOIN product_variants pv ON p.id = pv.product_id
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN brands b ON p.brand_id = b.id
+      WHERE 1=1
+    `;
     const values: any[] = [];
 
-    // Where conditions từ BaseModel
     if (options.where) {
       Object.keys(options.where).forEach((key) => {
-        sql += ` AND ${key} = ?`;
+        sql += ` AND p.${key} = ?`;
         values.push(options.where[key]);
       });
     }
 
-    // Search functionality
     if (options.search) {
-      sql += ` AND (name LIKE ? OR short_description LIKE ? OR content LIKE ?)`;
-      const searchTerm = `%${options.search}%`;
-      values.push(searchTerm, searchTerm, searchTerm);
+      sql += ` AND (p.name LIKE ? OR p.description LIKE ?)`;
+      const term = `%${options.search}%`;
+      values.push(term, term);
     }
 
-    // Price range
     if (options.minPrice !== undefined) {
-      sql += ` AND price >= ?`;
+      sql += ` AND pv.price >= ?`;
       values.push(options.minPrice);
     }
 
     if (options.maxPrice !== undefined) {
-      sql += ` AND price <= ?`;
+      sql += ` AND pv.price <= ?`;
       values.push(options.maxPrice);
     }
 
-    // Order by
+    sql += ` GROUP BY p.id`;
+
     if (options.orderBy) {
-      sql += ` ORDER BY ${options.orderBy} ${options.orderDir || "ASC"}`;
+      sql += ` ORDER BY p.${options.orderBy} ${options.orderDir || "ASC"}`;
     }
 
-    // Limit and offset
     if (options.limit) {
       sql += ` LIMIT ${options.limit}`;
       if (options.offset) {
@@ -51,81 +60,87 @@ class ProductModel extends BaseModel<IProduct> {
     }
 
     const [rows] = await this.db.query(sql, values);
-    return rows as IProduct[];
+    return rows as any[];
   }
 
-  // Override count để hỗ trợ search và price range
   async count(options: any = {}): Promise<number> {
-    let sql = `SELECT COUNT(*) as count FROM ${this.tableName} WHERE 1=1`;
+    let sql = `SELECT COUNT(DISTINCT p.id) as count FROM products p LEFT JOIN product_variants pv ON p.id = pv.product_id WHERE 1=1`;
     const values: any[] = [];
 
-    // Where conditions
     if (options.where) {
       Object.keys(options.where).forEach((key) => {
-        sql += ` AND ${key} = ?`;
+        sql += ` AND p.${key} = ?`;
         values.push(options.where[key]);
       });
     }
 
-    // Search functionality
     if (options.search) {
-      sql += ` AND (name LIKE ? OR short_description LIKE ? OR content LIKE ?)`;
-      const searchTerm = `%${options.search}%`;
-      values.push(searchTerm, searchTerm, searchTerm);
-    }
-
-    // Price range
-    if (options.minPrice !== undefined) {
-      sql += ` AND price >= ?`;
-      values.push(options.minPrice);
-    }
-
-    if (options.maxPrice !== undefined) {
-      sql += ` AND price <= ?`;
-      values.push(options.maxPrice);
+      sql += ` AND (p.name LIKE ? OR p.description LIKE ?)`;
+      const term = `%${options.search}%`;
+      values.push(term, term);
     }
 
     const [rows]: any = await this.db.query(sql, values);
     return rows[0].count;
   }
 
-  async filterProducts(params: {
-    keyword?: string;
-    min_price?: number;
-    max_price?: number;
-    category_id?: number;
-    limit: number;
-    offset: number;
-  }) {
-    let sql = `SELECT * FROM ${this.tableName} WHERE 1=1`;
-    const values: any[] = [];
+  // Lấy sản phẩm kèm tất cả variants
+  async findWithVariants(id: number | string): Promise<any | null> {
+    const [products]: any = await this.db.query(
+      `SELECT p.*, c.name as category_name, b.name as brand_name
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN brands b ON p.brand_id = b.id
+       WHERE p.id = ?`,
+      [id]
+    );
+    if (!products.length) return null;
 
-    if (params.keyword) {
-      sql += ` AND name LIKE ?`;
-      values.push(`%${params.keyword}%`);
-    }
+    const [variants] = await this.db.query(
+      `SELECT * FROM product_variants WHERE product_id = ?`,
+      [id]
+    );
 
-    if (params.category_id) {
-      sql += ` AND category_id = ?`;
-      values.push(params.category_id);
-    }
+    return { ...products[0], variants };
+  }
 
-    if (params.min_price) {
-      sql += ` AND price >= ?`;
-      values.push(params.min_price);
-    }
+  async findBySlugWithVariants(slug: string): Promise<any | null> {
+    const [products]: any = await this.db.query(
+      `SELECT p.*, c.name as category_name, b.name as brand_name
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN brands b ON p.brand_id = b.id
+       WHERE p.slug = ?`,
+      [slug]
+    );
+    if (!products.length) return null;
 
-    if (params.max_price) {
-      sql += ` AND price <= ?`;
-      values.push(params.max_price);
-    }
+    const [variants] = await this.db.query(
+      `SELECT * FROM product_variants WHERE product_id = ?`,
+      [products[0].id]
+    );
 
-    sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
-    values.push(params.limit, params.offset);
-
-    const [rows] = await this.db.query(sql, values);
-    return rows;
+    return { ...products[0], variants };
   }
 }
 
+class ProductVariantModel extends BaseModel<IProductVariant> {
+  constructor() {
+    super("product_variants");
+  }
+
+  async findByProductId(productId: number): Promise<IProductVariant[]> {
+    const [rows] = await this.db.query(
+      `SELECT * FROM product_variants WHERE product_id = ?`,
+      [productId]
+    );
+    return rows as IProductVariant[];
+  }
+
+  async deleteByProductId(productId: number) {
+    await this.db.query(`DELETE FROM product_variants WHERE product_id = ?`, [productId]);
+  }
+}
+
+export const ProductVariant = new ProductVariantModel();
 export default new ProductModel();

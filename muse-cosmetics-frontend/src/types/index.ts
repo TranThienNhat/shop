@@ -1,54 +1,68 @@
+export interface ProductVariant {
+  id: number;
+  product_id: number;
+  sku?: string;
+  variant_name?: string;
+  price: number;
+  stock_qty: number;
+  variant_image?: string;
+}
+
 export interface Product {
   id: number;
   name: string;
   slug: string;
-  price: string;
-  sale_price?: string;
-  cost?: string;
-  stock_qty: number;
-  sold_qty?: number;
-  image_url: string;
-  description: string;
-  short_description?: string;
-  content?: string;
-  capacity?: string;
-  color?: string;
-  ingredients?: string;
-  status: string;
+  description?: string;
+  status: "active" | "hidden";
   category_id?: number;
   brand_id?: number;
-  created_at: string;
-  updated_at: string;
+  category_name?: string;
+  brand_name?: string;
+  // Computed from variants
+  min_price?: number;
+  max_price?: number;
+  total_stock?: number;
+  variants: ProductVariant[];
   galleries: Gallery[];
 }
 
 export interface Gallery {
   id: number;
+  product_id: number;
   image_url: string;
+  is_main?: number;
+  sort_order?: number;
 }
 
 export interface CartItem {
   id: number;
+  variant_id: number;
   product_id: number;
   name: string;
-  price: string;
-  sale_price?: string;
+  variant_name?: string;
+  sku?: string;
+  price: number;
   quantity: number;
-  image_url: string;
-  slug: string;
   stock_qty: number;
+  slug: string;
   status: string;
+  // image from gallery join (optional)
+  image_url?: string;
 }
 
 export interface User {
   id: number;
   name: string;
   email: string;
+  phone?: string;
   role: "user" | "admin";
+  is_active?: number | boolean;
+  created_at?: string;
 }
 
 export interface Category {
   id: number;
+  parent_id?: number;
   name: string;
   slug: string;
 }
@@ -63,36 +77,49 @@ export interface Review {
   id: number;
   product_id: number;
   user_id: number;
+  order_id?: number;
   rating: number;
   comment: string;
+  is_approved: number;
   user_name: string;
   created_at: string;
+}
+
+export interface Coupon {
+  id: number;
+  code: string;
+  type: "percentage" | "fixed_amount";
+  value: number;
+  min_order_value?: number;
+  max_discount_value?: number;
+  total_limit?: number;
+  used_count: number;
+  start_date?: string;
+  end_date?: string;
+  is_active: number;
 }
 
 export interface Order {
   id: number;
   user_id: number;
-  code?: string;
+  order_code: string;
   total_amount: number;
-  status: string;
-  payment_method?: string;
-  shipping_name?: string;
-  shipping_phone?: string;
-  shipping_address: string;
-  shipping_email?: string;
-  note?: string;
-  phone: string;
+  discount_amount: number;
+  final_amount: number;
+  coupon_id?: number;
+  status: "pending" | "processing" | "shipped" | "completed" | "cancelled";
   created_at: string;
   items: OrderItem[];
 }
 
 export interface OrderItem {
   id: number;
-  product_id: number;
+  variant_id: number;
   name: string;
+  variant_name?: string;
   price: number;
   quantity: number;
-  image_url: string;
+  image_url?: string;
 }
 
 export interface ApiResponse<T> {

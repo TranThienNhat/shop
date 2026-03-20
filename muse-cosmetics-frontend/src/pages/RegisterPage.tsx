@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { Form, Input, Button, Typography, Card, Divider } from "antd";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Mail, Lock } from "lucide-react";
+import { User, Mail, Lock, Phone } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 const { Title, Paragraph } = Typography;
@@ -9,6 +9,7 @@ const { Title, Paragraph } = Typography;
 interface RegisterFormData {
   name: string;
   email: string;
+  phone?: string;
   password: string;
   confirmPassword: string;
 }
@@ -25,7 +26,7 @@ const RegisterPage: React.FC = () => {
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (values: RegisterFormData) => {
-    const success = await register(values.name, values.email, values.password);
+    const success = await register(values.name, values.email, values.password, values.phone);
     if (success) {
       navigate("/", { replace: true });
     }
@@ -74,6 +75,19 @@ const RegisterPage: React.FC = () => {
               <Input
                 prefix={<Mail size={16} className="text-gray" />}
                 placeholder="your@email.com"
+                className="rounded-lg"
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="phone"
+              label="Số điện thoại"
+              rules={[
+                { pattern: /^[0-9]{10,11}$/, message: "Số điện thoại không hợp lệ" },
+              ]}>
+              <Input
+                prefix={<Phone size={16} className="text-gray" />}
+                placeholder="0901234567"
                 className="rounded-lg"
               />
             </Form.Item>

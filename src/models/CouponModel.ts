@@ -6,15 +6,15 @@ class CouponModel extends BaseModel<ICoupon> {
     super("coupons");
   }
 
-  // Tìm coupon theo code
   async findByCode(code: string): Promise<ICoupon | null> {
-    return this.findOne({ code });
+    return this.findOne({ code } as any);
   }
 
-  // Validate coupon
+  // Validate coupon, kiểm tra cả per-user usage qua coupon_user
   async validateCoupon(
     code: string,
-    orderValue: number
+    orderValue: number,
+    userId?: number
   ): Promise<ICouponValidation> {
     const coupon = await this.findByCode(code);
 
@@ -22,12 +22,10 @@ class CouponModel extends BaseModel<ICoupon> {
       return { isValid: false, message: "Mã giảm giá không tồn tại" };
     }
 
-    // Check status
-    if (coupon.status !== "active") {
+    if (!coupon.is_active) {
       return { isValid: false, message: "Mã giảm giá không hoạt động" };
     }
 
-    // Check date range
     const now = new Date();
     if (coupon.start_date && new Date(coupon.start_date) > now) {
       return { isValid: false, message: "Mã giảm giá chưa có hiệu lực" };
@@ -37,16 +35,22 @@ class CouponModel extends BaseModel<ICoupon> {
       return { isValid: false, message: "Mã giảm giá đã hết hạn" };
     }
 
-    // Check quantity
-    if (
-      coupon.quantity &&
-      coupon.used_count &&
-      coupon.used_count >= coupon.quantity
-    ) {
+    // Kiểm tra tổng lượt dùng toàn sàn
+    if (coupon.total_limit != null && (coupon.used_count ?? 0) >= coupon.total_limit) {
       return { isValid: false, message: "Mã giảm giá đã hết lượt sử dụng" };
     }
 
-    // Check minimum order value
+    // Kiểm tra user đã dùng mã này chưa (UNIQUE constraint coupon_user)
+    if (userId && coupon.id) {
+      const [used]: any = await this.db.query(
+        `SELECT id FROM coupon_user WHERE user_id = ? AND coupon_id = ?`,
+        [userId, coupon.id]
+      );
+      if (used.length > 0) {
+        return { isValid: false, message: "Bạn đã sử dụng mã giảm giá này rồi" };
+      }
+    }
+
     if (coupon.min_order_value && orderValue < coupon.min_order_value) {
       return {
         isValid: false,
@@ -54,11 +58,9 @@ class CouponModel extends BaseModel<ICoupon> {
       };
     }
 
-    // Calculate discount
     let discount = 0;
     if (coupon.type === "percentage") {
       discount = (orderValue * coupon.value) / 100;
-      // Apply max discount limit if exists
       if (coupon.max_discount_value && discount > coupon.max_discount_value) {
         discount = coupon.max_discount_value;
       }
@@ -66,10 +68,7 @@ class CouponModel extends BaseModel<ICoupon> {
       discount = coupon.value;
     }
 
-    // Discount cannot exceed order value
-    if (discount > orderValue) {
-      discount = orderValue;
-    }
+    if (discount > orderValue) discount = orderValue;
 
     return {
       isValid: true,
@@ -79,7 +78,6 @@ class CouponModel extends BaseModel<ICoupon> {
     };
   }
 
-  // Tăng số lần sử dụng coupon
   async incrementUsage(couponId: number) {
     await this.db.query(
       "UPDATE coupons SET used_count = used_count + 1 WHERE id = ?",
@@ -87,18 +85,24 @@ class CouponModel extends BaseModel<ICoupon> {
     );
   }
 
-  // Lấy danh sách coupon có thể sử dụng
+  // Ghi nhận user đã dùng coupon (insert vào coupon_user)
+  async recordUsage(couponId: number, userId: number, orderId: number) {
+    await this.db.query(
+      `INSERT INTO coupon_user (coupon_id, user_id, order_id) VALUES (?, ?, ?)`,
+      [couponId, userId, orderId]
+    );
+  }
+
   async getAvailableCoupons(orderValue: number) {
     const sql = `
       SELECT * FROM coupons 
-      WHERE status = 'active' 
+      WHERE is_active = 1
         AND (start_date IS NULL OR start_date <= NOW())
         AND (end_date IS NULL OR end_date >= NOW())
-        AND (quantity IS NULL OR used_count < quantity)
+        AND (total_limit IS NULL OR used_count < total_limit)
         AND (min_order_value IS NULL OR min_order_value <= ?)
       ORDER BY value DESC
     `;
-
     const [rows] = await this.db.query(sql, [orderValue]);
     return rows as ICoupon[];
   }

@@ -1,216 +1,170 @@
+create database mypham_db;
+use mypham_db;
+
+-- =================================================================================
+-- HỆ THỐNG CƠ SỞ DỮ LIỆU E-COMMERCE MỸ PHẨM HOÀN CHỈNH
+-- Đặc tính: Chuẩn hóa 3NF, Quản lý SKU, Bảo mật Coupon, Snapshot Giá, Đa hình ảnh.
+-- =================================================================================
+
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS `product_galleries`, `reviews`, `order_items`, `orders`, `cart_items`, `carts`, `coupon_user`, `coupons`, `product_variants`, `products`, `brands`, `categories`, `users`;
+SET FOREIGN_KEY_CHECKS = 1;
 
-DROP TABLE IF EXISTS `brands`;
-CREATE TABLE `brands` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL,
-  `slug` varchar(255) NOT NULL,
-  `image_url` varchar(255) DEFAULT NULL,
-  `description` text,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `slug` (`slug`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- 1. NHÓM QUẢN LÝ NGƯỜI DÙNG
+-- Nghiệp vụ: Lưu trữ định danh khách hàng và nhân viên (Admin/User).
+CREATE TABLE `users` (
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL UNIQUE,
+  `password` varchar(255) NOT NULL,
+  `phone` varchar(20),
+  `role` enum('user', 'admin') DEFAULT 'user',
+  `is_active` tinyint DEFAULT 1, -- 0: Khóa, 1: Hoạt động
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
 
-DROP TABLE IF EXISTS `cart_items`;
-CREATE TABLE `cart_items` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `cart_id` bigint NOT NULL,
-  `product_id` bigint NOT NULL,
-  `quantity` int DEFAULT '1',
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_cart_product` (`cart_id`,`product_id`),
-  KEY `fk_cart_items_product` (`product_id`),
-  CONSTRAINT `fk_cart_items_cart` FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_cart_items_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `cart_items_chk_1` CHECK ((`quantity` > 0))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-DROP TABLE IF EXISTS `carts`;
-CREATE TABLE `carts` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `user_id` bigint DEFAULT NULL,
-  `session_id` varchar(100) DEFAULT NULL,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `coupon_code` varchar(50) DEFAULT NULL,
-  `discount_amount` decimal(15,2) DEFAULT '0.00',
-  PRIMARY KEY (`id`),
-  KEY `fk_carts_users` (`user_id`),
-  KEY `idx_carts_coupon_code` (`coupon_code`),
-  CONSTRAINT `fk_carts_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `carts_chk_1` CHECK (((`user_id` is not null) or (`session_id` is not null)))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-DROP TABLE IF EXISTS `categories`;
+-- 2. NHÓM PHÂN LOẠI & THƯƠNG HIỆU
+-- Nghiệp vụ: 'parent_id' cho phép tạo danh mục đa cấp (VD: Chăm sóc da > Kem dưỡng).
 CREATE TABLE `categories` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
   `parent_id` bigint DEFAULT NULL,
   `name` varchar(255) NOT NULL,
-  `slug` varchar(255) NOT NULL,
-  `image_url` varchar(255) DEFAULT NULL,
-  `description` text,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `slug` (`slug`),
-  KEY `fk_categories_parent` (`parent_id`),
-  CONSTRAINT `fk_categories_parent` FOREIGN KEY (`parent_id`) REFERENCES `categories` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `slug` varchar(255) NOT NULL UNIQUE,
+  FOREIGN KEY (`parent_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB;
 
-DROP TABLE IF EXISTS `coupons`;
-CREATE TABLE `coupons` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `code` varchar(50) NOT NULL,
-  `name` varchar(255) DEFAULT NULL,
-  `description` text,
-  `type` varchar(20) DEFAULT NULL,
-  `value` decimal(15,2) NOT NULL,
-  `min_order_value` decimal(15,2) DEFAULT '0.00',
-  `max_discount_value` decimal(15,2) DEFAULT NULL,
-  `quantity` int DEFAULT NULL,
-  `used_count` int DEFAULT '0',
-  `start_date` datetime DEFAULT NULL,
-  `end_date` datetime DEFAULT NULL,
-  `status` varchar(20) DEFAULT 'active',
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `code` (`code`),
-  CONSTRAINT `coupons_chk_1` CHECK ((`type` in (_utf8mb4'percentage',_utf8mb4'fixed_amount'))),
-  CONSTRAINT `coupons_chk_2` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'inactive',_utf8mb4'expired')))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE `brands` (
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `slug` varchar(255) NOT NULL UNIQUE
+) ENGINE=InnoDB;
 
-DROP TABLE IF EXISTS `galleries`;
-CREATE TABLE `galleries` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
+-- 3. NHÓM SẢN PHẨM & SKU (TRÁI TIM HỆ THỐNG)
+-- Nghiệp vụ: Bảng 'products' lưu thông tin chung. Giá và Kho nằm ở 'product_variants'.
+CREATE TABLE `products` (
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
+  `category_id` bigint,
+  `brand_id` bigint,
+  `name` varchar(255) NOT NULL,
+  `slug` varchar(255) NOT NULL UNIQUE,
+  `description` text,
+  `status` enum('active', 'hidden') DEFAULT 'active',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`),
+  FOREIGN KEY (`brand_id`) REFERENCES `brands` (`id`)
+) ENGINE=InnoDB;
+
+-- Nghiệp vụ: Quản lý biến thể (VD: Son màu 01, Son màu 02). 
+-- Mỗi biến thể là 1 SKU độc lập có giá và tồn kho riêng.
+CREATE TABLE `product_variants` (
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
+  `product_id` bigint NOT NULL,
+  `sku` varchar(100) UNIQUE, 
+  `variant_name` varchar(255), -- 'Màu 01 - Đỏ', 'Chai 500ml'
+  `price` decimal(15,2) NOT NULL,
+  `stock_qty` int DEFAULT 0,
+  `variant_image` varchar(255) DEFAULT NULL, -- Ảnh riêng cho màu/size đó
+  FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 4. QUẢN LÝ HÌNH ẢNH (GALLERY)
+-- Nghiệp vụ: Một sản phẩm có nhiều ảnh. 'is_main' dùng để lấy ảnh đại diện nhanh.
+CREATE TABLE `product_galleries` (
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
   `product_id` bigint NOT NULL,
   `image_url` varchar(255) NOT NULL,
-  `sort_order` int DEFAULT '0',
-  PRIMARY KEY (`id`),
-  KEY `fk_galleries_products` (`product_id`),
-  CONSTRAINT `fk_galleries_products` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `is_main` tinyint DEFAULT 0, -- 1: Ảnh chính, 0: Ảnh phụ
+  `sort_order` int DEFAULT 0,
+  FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
-DROP TABLE IF EXISTS `order_details`;
-CREATE TABLE `order_details` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
+-- 5. HỆ THỐNG KHUYẾN MÃI (COUPONS)
+-- Nghiệp vụ: Quản lý mã giảm giá, giới hạn ngân sách và thời gian sử dụng.
+CREATE TABLE `coupons` (
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
+  `code` varchar(50) NOT NULL UNIQUE,
+  `type` enum('percentage', 'fixed_amount') NOT NULL,
+  `value` decimal(15,2) NOT NULL, 
+  `min_order_value` decimal(15,2) DEFAULT 0,
+  `max_discount_value` decimal(15,2) NULL,
+  `start_date` datetime,
+  `end_date` datetime,
+  `total_limit` int DEFAULT NULL, -- Tổng lượt dùng toàn sàn
+  `used_count` int DEFAULT 0,
+  `is_active` tinyint DEFAULT 1
+) ENGINE=InnoDB;
+
+-- Nghiệp vụ: UNIQUE KEY chặn User dùng 1 mã nhiều lần.
+CREATE TABLE `coupon_user` (
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
+  `coupon_id` bigint NOT NULL,
+  `user_id` bigint NOT NULL,
   `order_id` bigint NOT NULL,
-  `product_id` bigint DEFAULT NULL,
-  `product_name` varchar(255) DEFAULT NULL,
-  `price` decimal(15,2) NOT NULL,
-  `quantity` int DEFAULT NULL,
-  `total_price` decimal(15,2) DEFAULT NULL,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `fk_order_details_orders` (`order_id`),
-  KEY `fk_order_details_products` (`product_id`),
-  CONSTRAINT `fk_order_details_orders` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_order_details_products` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `order_details_chk_1` CHECK ((`quantity` > 0))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `used_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`coupon_id`) REFERENCES `coupons` (`id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  UNIQUE KEY `uq_user_coupon` (`user_id`, `coupon_id`) 
+) ENGINE=InnoDB;
 
-DROP TABLE IF EXISTS `orders`;
+-- 6. GIỎ HÀNG & ĐƠN HÀNG
+-- Nghiệp vụ: 'session_id' lưu giỏ hàng cho khách chưa đăng nhập.
+CREATE TABLE `carts` (
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
+  `user_id` bigint NULL,
+  `session_id` varchar(100) NULL,
+  `coupon_id` bigint NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  FOREIGN KEY (`coupon_id`) REFERENCES `coupons` (`id`)
+) ENGINE=InnoDB;
+
+CREATE TABLE `cart_items` (
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
+  `cart_id` bigint NOT NULL,
+  `variant_id` bigint NOT NULL,
+  `quantity` int NOT NULL DEFAULT 1,
+  FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`variant_id`) REFERENCES `product_variants` (`id`)
+) ENGINE=InnoDB;
+
+-- Nghiệp vụ Orders: Lưu tổng tiền cuối cùng và mã giảm giá đã dùng.
 CREATE TABLE `orders` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `user_id` bigint DEFAULT NULL,
-  `code` varchar(50) NOT NULL,
-  `subtotal` decimal(15,2) DEFAULT NULL,
-  `shipping_fee` decimal(15,2) DEFAULT '0.00',
-  `discount_amount` decimal(15,2) DEFAULT '0.00',
-  `total` decimal(15,2) DEFAULT NULL,
-  `payment_method` varchar(50) DEFAULT NULL,
-  `payment_status` varchar(20) DEFAULT 'Unpaid',
-  `shipping_name` varchar(100) DEFAULT NULL,
-  `shipping_phone` varchar(20) DEFAULT NULL,
-  `shipping_address` text,
-  `shipping_email` varchar(100) DEFAULT NULL,
-  `note` text,
-  `status` varchar(20) DEFAULT 'pending',
-  `coupon_id` bigint DEFAULT NULL,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `code` (`code`),
-  KEY `fk_orders_users` (`user_id`),
-  KEY `fk_orders_coupons` (`coupon_id`),
-  CONSTRAINT `fk_orders_coupons` FOREIGN KEY (`coupon_id`) REFERENCES `coupons` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_orders_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `orders_chk_1` CHECK ((`payment_status` in (_utf8mb4'Unpaid',_utf8mb4'Paid',_utf8mb4'Refunded'))),
-  CONSTRAINT `orders_chk_2` CHECK ((`status` in (_utf8mb4'pending',_utf8mb4'confirmed',_utf8mb4'shipping',_utf8mb4'completed',_utf8mb4'cancelled',_utf8mb4'refunded')))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
+  `user_id` bigint NULL,
+  `order_code` varchar(50) NOT NULL UNIQUE,
+  `total_amount` decimal(15,2) NOT NULL,
+  `discount_amount` decimal(15,2) DEFAULT 0,
+  `final_amount` decimal(15,2) NOT NULL,
+  `coupon_id` bigint NULL,
+  `status` enum('pending','processing','shipped','completed','cancelled') DEFAULT 'pending',
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  FOREIGN KEY (`coupon_id`) REFERENCES `coupons` (`id`)
+) ENGINE=InnoDB;
 
-DROP TABLE IF EXISTS `products`;
-CREATE TABLE `products` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `category_id` bigint DEFAULT NULL,
-  `brand_id` bigint DEFAULT NULL,
-  `name` varchar(255) NOT NULL,
-  `slug` varchar(255) NOT NULL,
-  `price` decimal(15,2) NOT NULL,
-  `sale_price` decimal(15,2) DEFAULT NULL,
-  `cost` decimal(15,2) DEFAULT NULL,
-  `stock_qty` int DEFAULT '0',
-  `sold_qty` int DEFAULT '0',
-  `short_description` varchar(2000) DEFAULT NULL,
-  `content` text,
-  `image_url` varchar(255) DEFAULT NULL,
-  `capacity` varchar(255) DEFAULT NULL,
-  `color` varchar(255) DEFAULT NULL,
-  `ingredients` text,
-  `status` varchar(20) DEFAULT 'in_stock',
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `slug` (`slug`),
-  KEY `fk_products_categories` (`category_id`),
-  KEY `fk_products_brands` (`brand_id`),
-  KEY `idx_products_name` (`name`),
-  KEY `idx_products_sale_price` (`sale_price`),
-  CONSTRAINT `fk_products_brands` FOREIGN KEY (`brand_id`) REFERENCES `brands` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_products_categories` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `products_chk_1` CHECK ((`stock_qty` >= 0)),
-  CONSTRAINT `products_chk_2` CHECK ((`status` in (_utf8mb4'in_stock',_utf8mb4'out_of_stock',_utf8mb4'hidden')))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- Nghiệp vụ Order_Items: Snapshot 'price' giúp cố định giá lúc mua, 
+-- tránh sai lệch doanh thu khi SP thay đổi giá trong tương lai.
+CREATE TABLE `order_items` (
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
+  `order_id` bigint NOT NULL,
+  `variant_id` bigint NULL,
+  `price` decimal(15,2) NOT NULL, -- Giá snapshot
+  `quantity` int NOT NULL,
+  FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
-DROP TABLE IF EXISTS `reviews`;
+-- 7. TƯƠNG TÁC KHÁCH HÀNG
+-- Nghiệp vụ Reviews: Gắn với 'order_id' để xác nhận "Người mua thực".
 CREATE TABLE `reviews` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
+  `id` bigint PRIMARY KEY AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
   `product_id` bigint NOT NULL,
-  `order_id` bigint DEFAULT NULL,
-  `rating` int DEFAULT NULL,
+  `order_id` bigint,
+  `rating` tinyint CHECK (rating BETWEEN 1 AND 5),
   `comment` text,
-  `is_approved` tinyint(1) DEFAULT '0',
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `fk_reviews_users` (`user_id`),
-  KEY `fk_reviews_products` (`product_id`),
-  CONSTRAINT `fk_reviews_products` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_reviews_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `reviews_chk_1` CHECK ((`rating` between 1 and 5))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-DROP TABLE IF EXISTS `users`;
-CREATE TABLE `users` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `phone` varchar(20) DEFAULT NULL,
-  `avatar` varchar(255) DEFAULT NULL,
-  `role` enum('user','admin') NOT NULL DEFAULT 'user',
-  `is_active` tinyint(1) DEFAULT '1',
-  `last_login_at` datetime DEFAULT NULL,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-SET FOREIGN_KEY_CHECKS = 1;
+  `is_approved` tinyint DEFAULT 0,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  FOREIGN KEY (`product_id`) REFERENCES `products` (`id`),
+  FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`)
+) ENGINE=InnoDB;

@@ -31,8 +31,7 @@ interface User {
   email: string;
   phone: string;
   role: string;
-  is_active: boolean;
-  last_login_at: string;
+  is_active: boolean | number;
   created_at: string;
 }
 
@@ -150,13 +149,6 @@ const UsersPage: React.FC = () => {
           {isActive ? "Hoạt động" : "Bị khóa"}
         </Tag>
       ),
-    },
-    {
-      title: "Đăng nhập cuối",
-      dataIndex: "last_login_at",
-      key: "last_login_at",
-      render: (date: string) =>
-        date ? new Date(date).toLocaleDateString("vi-VN") : "Chưa đăng nhập",
     },
     {
       title: "Ngày tạo",

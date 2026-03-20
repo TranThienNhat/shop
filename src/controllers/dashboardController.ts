@@ -1,71 +1,62 @@
 import { Request, Response } from "express";
 import pool from "../config/db";
 
-export const getDashboardStats = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const getDashboardStats = async (req: Request, res: Response): Promise<Response> => {
   try {
     const connection = await pool.getConnection();
-
     try {
-      // Lấy tổng số sản phẩm
       const [productsCount]: any = await connection.query(
         "SELECT COUNT(*) as count FROM products WHERE status != 'hidden'"
       );
 
-      // Lấy tổng số người dùng
       const [usersCount]: any = await connection.query(
         "SELECT COUNT(*) as count FROM users WHERE is_active = 1"
       );
 
-      // Lấy tổng số đơn hàng
       const [ordersCount]: any = await connection.query(
         "SELECT COUNT(*) as count FROM orders"
       );
 
-      // Lấy tổng doanh thu (chỉ tính đơn hàng completed)
+      // Dùng final_amount thay vì total
       const [revenueResult]: any = await connection.query(
-        "SELECT COALESCE(SUM(total), 0) as total FROM orders WHERE status = 'completed'"
+        "SELECT COALESCE(SUM(final_amount), 0) as total FROM orders WHERE status = 'completed'"
       );
 
-      // Lấy đơn hàng gần đây (10 đơn mới nhất)
       const [recentOrders]: any = await connection.query(`
-        SELECT id, code, shipping_name, total, status, created_at 
-        FROM orders 
-        ORDER BY created_at DESC 
+        SELECT id, order_code, final_amount, status, created_at
+        FROM orders
+        ORDER BY created_at DESC
         LIMIT 10
       `);
 
-      // Lấy sản phẩm bán chạy (top 5 theo sold_qty)
+      // Top sản phẩm bán chạy qua order_items -> product_variants
       const [topProducts]: any = await connection.query(`
-        SELECT id, name, price, stock_qty, sold_qty 
-        FROM products 
-        WHERE status != 'hidden'
-        ORDER BY sold_qty DESC 
+        SELECT p.id, p.name, SUM(oi.quantity) as sold_qty, MIN(pv.price) as min_price
+        FROM order_items oi
+        JOIN product_variants pv ON oi.variant_id = pv.id
+        JOIN products p ON pv.product_id = p.id
+        JOIN orders o ON oi.order_id = o.id
+        WHERE o.status = 'completed'
+        GROUP BY p.id, p.name
+        ORDER BY sold_qty DESC
         LIMIT 5
       `);
 
-      // Thống kê theo tháng (doanh thu 12 tháng gần nhất)
       const [monthlyRevenue]: any = await connection.query(`
-        SELECT 
+        SELECT
           DATE_FORMAT(created_at, '%Y-%m') as month,
-          COALESCE(SUM(total), 0) as revenue,
+          COALESCE(SUM(final_amount), 0) as revenue,
           COUNT(*) as orders
-        FROM orders 
-        WHERE status = 'completed' 
+        FROM orders
+        WHERE status = 'completed'
           AND created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
         GROUP BY DATE_FORMAT(created_at, '%Y-%m')
         ORDER BY month DESC
       `);
 
-      // Thống kê trạng thái đơn hàng
       const [orderStatusStats]: any = await connection.query(`
-        SELECT 
-          status,
-          COUNT(*) as count,
-          COALESCE(SUM(total), 0) as total_amount
-        FROM orders 
+        SELECT status, COUNT(*) as count, COALESCE(SUM(final_amount), 0) as total_amount
+        FROM orders
         GROUP BY status
       `);
 
@@ -91,47 +82,30 @@ export const getDashboardStats = async (
   }
 };
 
-export const getRevenueStats = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+export const getRevenueStats = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { period = "month" } = req.query; // month, week, year
+    const { period = "month" } = req.query;
 
     let dateFormat = "%Y-%m";
     let interval = "12 MONTH";
 
-    switch (period) {
-      case "week":
-        dateFormat = "%Y-%u";
-        interval = "12 WEEK";
-        break;
-      case "year":
-        dateFormat = "%Y";
-        interval = "5 YEAR";
-        break;
-      default:
-        dateFormat = "%Y-%m";
-        interval = "12 MONTH";
-    }
+    if (period === "week") { dateFormat = "%Y-%u"; interval = "12 WEEK"; }
+    else if (period === "year") { dateFormat = "%Y"; interval = "5 YEAR"; }
 
     const [revenueStats]: any = await pool.query(`
-      SELECT 
+      SELECT
         DATE_FORMAT(created_at, '${dateFormat}') as period,
-        COALESCE(SUM(total), 0) as revenue,
+        COALESCE(SUM(final_amount), 0) as revenue,
         COUNT(*) as orders,
-        AVG(total) as avg_order_value
-      FROM orders 
-      WHERE status = 'completed' 
+        AVG(final_amount) as avg_order_value
+      FROM orders
+      WHERE status = 'completed'
         AND created_at >= DATE_SUB(NOW(), INTERVAL ${interval})
       GROUP BY DATE_FORMAT(created_at, '${dateFormat}')
       ORDER BY period DESC
     `);
 
-    return res.json({
-      message: "Lấy thống kê doanh thu thành công",
-      data: revenueStats,
-    });
+    return res.json({ message: "Lấy thống kê doanh thu thành công", data: revenueStats });
   } catch (error) {
     console.error("Revenue stats error:", error);
     return res.status(500).json({ message: "Lỗi server" });

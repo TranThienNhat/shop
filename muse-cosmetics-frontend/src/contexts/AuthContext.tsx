@@ -14,7 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, phone?: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -87,16 +87,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (
     name: string,
     email: string,
-    password: string
+    password: string,
+    phone?: string
   ): Promise<boolean> => {
     try {
       setIsLoading(true);
 
-      // Register user
       await api.post("/auth/register", {
         name,
         email,
         password,
+        phone,
       });
 
       // Auto login after successful registration

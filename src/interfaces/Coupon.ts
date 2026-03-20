@@ -1,19 +1,16 @@
 export interface ICoupon {
   id?: number;
   code: string;
-  name?: string;
-  description?: string;
   type: "percentage" | "fixed_amount";
   value: number;
   min_order_value?: number;
   max_discount_value?: number;
-  quantity?: number;
+  total_limit?: number;
   used_count?: number;
   start_date?: Date;
   end_date?: Date;
-  status?: "active" | "inactive" | "expired";
+  is_active?: number; // 1 = active, 0 = inactive
   created_at?: Date;
-  updated_at?: Date;
 }
 
 export interface ICouponValidation {

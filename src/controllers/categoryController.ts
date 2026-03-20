@@ -26,24 +26,15 @@ export const create = async (
   res: Response
 ): Promise<Response> => {
   try {
-    const { name, parent_id, image_url, description } = req.body as ICategory;
-
-    console.log("Creating category with data:", {
-      name,
-      parent_id,
-      image_url,
-      description,
-    });
+    const { name, parent_id } = req.body as ICategory;
 
     if (!name)
       return res.status(400).json({ message: "Tên danh mục là bắt buộc" });
 
     const slug = createSlug(name);
-    console.log("Generated slug:", slug);
 
     const exists = await Category.findOne({ slug });
     if (exists) {
-      console.log("Category already exists:", exists);
       return res.status(409).json({ message: "Danh mục đã tồn tại" });
     }
 
@@ -51,11 +42,7 @@ export const create = async (
       name,
       slug,
       parent_id: parent_id || null,
-      image_url,
-      description,
     });
-
-    console.log("Created category with ID:", newId);
 
     return res
       .status(201)
@@ -73,7 +60,7 @@ export const update = async (
 ): Promise<Response> => {
   try {
     const { id } = req.params;
-    const { name, parent_id, image_url, description } = req.body as ICategory;
+    const { name, parent_id } = req.body as ICategory;
 
     if (parent_id && Number(parent_id) === Number(id)) {
       return res
@@ -83,8 +70,6 @@ export const update = async (
 
     const dataToUpdate: Partial<ICategory> = {
       parent_id: parent_id || null,
-      image_url,
-      description,
     };
 
     if (name) {

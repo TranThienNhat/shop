@@ -34,45 +34,25 @@ const OrdersPage: React.FC = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "pending":
-        return "orange";
-      case "confirmed":
-        return "blue";
-      case "shipping":
-        return "cyan";
-      case "completed":
-        return "green";
-      case "delivered":
-        return "green";
-      case "cancelled":
-        return "red";
-      case "refunded":
-        return "purple";
-      default:
-        return "default";
-    }
+    const colors: Record<string, string> = {
+      pending: "orange",
+      processing: "blue",
+      shipped: "cyan",
+      completed: "green",
+      cancelled: "red",
+    };
+    return colors[status] || "default";
   };
 
   const getStatusText = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "pending":
-        return "Chờ xác nhận";
-      case "confirmed":
-        return "Đã xác nhận";
-      case "shipping":
-        return "Đang giao hàng";
-      case "completed":
-        return "Hoàn tất";
-      case "delivered":
-        return "Đã giao hàng";
-      case "cancelled":
-        return "Đã hủy";
-      case "refunded":
-        return "Hoàn tiền";
-      default:
-        return status;
-    }
+    const texts: Record<string, string> = {
+      pending: "Chờ xác nhận",
+      processing: "Đang xử lý",
+      shipped: "Đang giao hàng",
+      completed: "Hoàn tất",
+      cancelled: "Đã hủy",
+    };
+    return texts[status] || status;
   };
 
   // Redirect to login if not authenticated
@@ -140,14 +120,7 @@ const OrdersPage: React.FC = () => {
                         </span>
                         <span className="flex items-center gap-1">
                           <CreditCard size={14} />
-                          {(() => {
-                            console.log(
-                              "Order header total_amount:",
-                              order.total_amount,
-                              typeof order.total_amount
-                            );
-                            return formatCurrency(order.total_amount);
-                          })()}
+                          {formatCurrency(order.final_amount)}
                         </span>
                       </div>
                     </div>
@@ -247,37 +220,27 @@ const OrdersPage: React.FC = () => {
                             Thông tin giao hàng
                           </Title>
                           <div className="bg-gray-50 p-4 rounded-lg">
-                            <p className="text-charcoal">
-                              <strong>Người nhận:</strong>{" "}
-                              {order.shipping_name || "Chưa có thông tin"}
-                            </p>
-                            <p className="text-charcoal mt-1">
-                              <strong>Số điện thoại:</strong>{" "}
-                              {order.shipping_phone ||
-                                order.phone ||
-                                "Chưa có thông tin"}
-                            </p>
-                            <p className="text-charcoal mt-1">
-                              <strong>Địa chỉ:</strong>{" "}
-                              {order.shipping_address || "Chưa có thông tin"}
+                            <p className="text-gray text-sm">
+                              Liên hệ shop để biết thêm thông tin giao hàng
                             </p>
                           </div>
                         </div>
 
                         <div className="border-t pt-4">
-                          <div className="flex justify-between text-lg">
-                            <span className="text-charcoal font-semibold">
-                              Tổng cộng:
-                            </span>
+                          <div className="flex justify-between">
+                            <span className="text-gray">Tạm tính:</span>
+                            <span>{formatCurrency(order.total_amount)}</span>
+                          </div>
+                          {order.discount_amount > 0 && (
+                            <div className="flex justify-between text-green-600">
+                              <span>Giảm giá:</span>
+                              <span>-{formatCurrency(order.discount_amount)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-lg mt-2">
+                            <span className="text-charcoal font-semibold">Thực trả:</span>
                             <span className="text-primary font-bold">
-                              {(() => {
-                                console.log(
-                                  "Order total_amount:",
-                                  order.total_amount,
-                                  typeof order.total_amount
-                                );
-                                return formatCurrency(order.total_amount);
-                              })()}
+                              {formatCurrency(order.final_amount)}
                             </span>
                           </div>
                         </div>

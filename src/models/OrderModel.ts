@@ -7,23 +7,24 @@ class OrderModel extends BaseModel<IOrder> {
     super("orders");
   }
 
-  // Lấy đơn hàng với chi tiết sản phẩm
   async findAll(options: any = {}) {
     let sql = `
-      SELECT o.*, 
+      SELECT o.*,
              GROUP_CONCAT(
                JSON_OBJECT(
-                 'id', od.id,
-                 'product_id', od.product_id,
-                 'name', od.product_name,
-                 'price', od.price,
-                 'quantity', od.quantity,
-                 'image_url', p.image_url
+                 'id', oi.id,
+                 'variant_id', oi.variant_id,
+                 'name', p.name,
+                 'variant_name', pv.variant_name,
+                 'price', oi.price,
+                 'quantity', oi.quantity,
+                 'image_url', (SELECT image_url FROM product_galleries WHERE product_id = p.id ORDER BY is_main DESC, sort_order ASC LIMIT 1)
                )
              ) as items_json
       FROM orders o
-      LEFT JOIN order_details od ON o.id = od.order_id
-      LEFT JOIN products p ON od.product_id = p.id
+      LEFT JOIN order_items oi ON o.id = oi.order_id
+      LEFT JOIN product_variants pv ON oi.variant_id = pv.id
+      LEFT JOIN products p ON pv.product_id = p.id
     `;
 
     const values: any[] = [];
@@ -44,91 +45,78 @@ class OrderModel extends BaseModel<IOrder> {
 
     if (options.limit) {
       sql += ` LIMIT ${options.limit}`;
-      if (options.offset) {
-        sql += ` OFFSET ${options.offset}`;
-      }
+      if (options.offset) sql += ` OFFSET ${options.offset}`;
     }
 
     const [rows]: any = await this.db.query(sql, values);
-
-    // Parse JSON items and map field names for frontend compatibility
     return rows.map((row: any) => ({
       ...row,
-      total_amount: row.total, // Map total to total_amount for frontend
       items: row.items_json ? JSON.parse(`[${row.items_json}]`) : [],
     }));
   }
 
-  // Transaction tạo đơn hàng hoàn chỉnh
-  async createOrderTransaction(orderData: IOrder, items: any[]) {
+  // Transaction tạo đơn hàng theo schema mới
+  async createOrderTransaction(
+    orderData: IOrder & {
+      shipping_name?: string;
+      shipping_phone?: string;
+      shipping_address?: string;
+      shipping_email?: string;
+      payment_method?: string;
+    },
+    items: any[]
+  ) {
     const connection = await pool.getConnection();
     try {
-      await connection.beginTransaction(); // Bắt đầu Transaction
+      await connection.beginTransaction();
 
-      // Get coupon_id if coupon_code is provided
-      let couponId = null;
-      if (orderData.coupon_code) {
-        const [couponResult]: any = await connection.query(
-          "SELECT id FROM coupons WHERE code = ?",
-          [orderData.coupon_code]
-        );
-        if (couponResult.length > 0) {
-          couponId = couponResult[0].id;
-        }
-      }
-
-      // 1. Insert Order
+      // 1. Insert order với các cột đúng theo schema mới
       const [orderResult]: any = await connection.query(
-        `INSERT INTO orders (user_id, code, subtotal, discount_amount, total, payment_method, shipping_name, shipping_phone, shipping_address, shipping_email, coupon_id, status) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+        `INSERT INTO orders (user_id, order_code, total_amount, discount_amount, final_amount, coupon_id, status)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
         [
           orderData.user_id,
-          orderData.code,
-          orderData.subtotal || orderData.total,
+          orderData.order_code,
+          orderData.total_amount,
           orderData.discount_amount || 0,
-          orderData.total,
-          orderData.payment_method,
-          orderData.shipping_name,
-          orderData.shipping_phone,
-          orderData.shipping_address,
-          orderData.shipping_email,
-          couponId,
+          orderData.final_amount,
+          orderData.coupon_id || null,
         ]
       );
       const orderId = orderResult.insertId;
 
-      // 2. Insert Order Details & Trừ tồn kho
+      // 2. Insert order_items (snapshot giá) & trừ tồn kho variant
       for (const item of items) {
-        const price = item.sale_price || item.price;
-
-        // Thêm chi tiết đơn
         await connection.query(
-          `INSERT INTO order_details (order_id, product_id, product_name, price, quantity, total_price) 
-                     VALUES (?, ?, ?, ?, ?, ?)`,
-          [
-            orderId,
-            item.product_id,
-            item.name,
-            price,
-            item.quantity,
-            price * item.quantity,
-          ]
+          `INSERT INTO order_items (order_id, variant_id, price, quantity) VALUES (?, ?, ?, ?)`,
+          [orderId, item.variant_id, item.price, item.quantity]
         );
 
-        // Trừ tồn kho (Cần check xem còn đủ hàng không trước khi trừ - Bước này làm đơn giản trừ luôn)
         await connection.query(
-          `UPDATE products SET stock_qty = stock_qty - ?, sold_qty = sold_qty + ? WHERE id = ?`,
-          [item.quantity, item.quantity, item.product_id]
+          `UPDATE product_variants SET stock_qty = stock_qty - ? WHERE id = ?`,
+          [item.quantity, item.variant_id]
         );
       }
 
-      await connection.commit(); // Lưu thay đổi
+      // 3. Ghi nhận coupon usage nếu có
+      if (orderData.coupon_id && orderData.user_id) {
+        await connection.query(
+          `INSERT INTO coupon_user (coupon_id, user_id, order_id) VALUES (?, ?, ?)`,
+          [orderData.coupon_id, orderData.user_id, orderId]
+        );
+        await connection.query(
+          `UPDATE coupons SET used_count = used_count + 1 WHERE id = ?`,
+          [orderData.coupon_id]
+        );
+      }
+
+      await connection.commit();
       return orderId;
     } catch (error) {
-      await connection.rollback(); // Hoàn tác nếu lỗi
+      await connection.rollback();
       throw error;
     } finally {
-      connection.release(); // Trả kết nối về pool
+      connection.release();
     }
   }
 }

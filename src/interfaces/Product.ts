@@ -4,12 +4,17 @@ export interface IProduct {
   brand_id?: number;
   name: string;
   slug: string;
-  price: number;
-  sale_price?: number;
-  stock_qty?: number;
-  image_url?: string;
   description?: string;
-  status?: "in_stock" | "out_of_stock" | "hidden";
+  status?: "active" | "hidden";
   created_at?: Date;
-  updated_at?: Date;
+}
+
+export interface IProductVariant {
+  id?: number;
+  product_id: number;
+  sku?: string;
+  variant_name?: string;
+  price: number;
+  stock_qty?: number;
+  variant_image?: string;
 }

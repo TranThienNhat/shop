@@ -19,7 +19,7 @@ interface CartContextType {
   discount: number;
   couponCode: string | null;
   isLoading: boolean;
-  addToCart: (productId: number, quantity?: number) => Promise<void>;
+  addToCart: (variantId: number, quantity?: number) => Promise<void>;
   updateQuantity: (itemId: number, quantity: number) => Promise<void>;
   removeFromCart: (itemId: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -88,15 +88,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   }, [refreshCart, authLoading]);
 
   const addToCart = useCallback(
-    async (productId: number, quantity: number = 1) => {
+    async (variantId: number, quantity: number = 1) => {
       if (!isAuthenticated) {
         message.warning("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng");
         return;
       }
 
-      // Validate input
-      if (!productId || productId <= 0) {
-        message.error("Sản phẩm không hợp lệ");
+      if (!variantId || variantId <= 0) {
+        message.error("Variant sản phẩm không hợp lệ");
         return;
       }
 
@@ -108,7 +107,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       try {
         setIsLoading(true);
         await api.post("/cart/add", {
-          productId: productId,
+          variantId,
           quantity,
         });
 
@@ -133,7 +132,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         return;
       }
 
-      // Find the item to get product_id
+      // Find the item to get variant_id
       const item = items.find((item) => item.id === itemId);
       if (!item) {
         message.error("Không tìm thấy sản phẩm");
@@ -142,8 +141,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
       try {
         setIsLoading(true);
-        // Use product_id instead of item id
-        await api.delete(`/cart/${item.product_id}`);
+        await api.delete(`/cart/${item.variant_id}`);
 
         await refreshCart();
         message.success("Đã xóa sản phẩm khỏi giỏ hàng!");
@@ -170,7 +168,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         return;
       }
 
-      // Find the item to get product_id
+      // Find the item to get variant_id
       const item = items.find((item) => item.id === itemId);
       if (!item) {
         message.error("Không tìm thấy sản phẩm");
@@ -179,8 +177,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
       try {
         setIsLoading(true);
-        // Use product_id instead of item id
-        await api.put(`/cart/${item.product_id}`, {
+        await api.put(`/cart/${item.variant_id}`, {
           quantity,
         });
 

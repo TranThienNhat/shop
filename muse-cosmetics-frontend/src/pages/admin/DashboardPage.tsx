@@ -104,39 +104,34 @@ const DashboardPage: React.FC = () => {
   const orderColumns = [
     {
       title: "Mã đơn",
-      dataIndex: "code",
-      key: "code",
-      render: (code: string) => (
-        <Link to={`/admin/orders/${code}`} className="text-primary">
-          {code}
+      dataIndex: "order_code",
+      key: "order_code",
+      render: (order_code: string) => (
+        <Link to={`/admin/orders`} className="text-primary">
+          {order_code}
         </Link>
       ),
     },
     {
-      title: "Khách hàng",
-      dataIndex: "shipping_name",
-      key: "customer",
-    },
-    {
       title: "Tổng tiền",
-      dataIndex: "total",
-      key: "total",
-      render: (total: number) => formatCurrency(total),
+      dataIndex: "final_amount",
+      key: "final_amount",
+      render: (final_amount: number) => formatCurrency(final_amount),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       render: (status: string) => {
-        const colors = {
+        const colors: Record<string, string> = {
           pending: "orange",
-          confirmed: "blue",
-          shipping: "purple",
+          processing: "blue",
+          shipped: "cyan",
           completed: "green",
           cancelled: "red",
         };
         return (
-          <Tag color={colors[status as keyof typeof colors]}>{status}</Tag>
+          <Tag color={colors[status] || "default"}>{status}</Tag>
         );
       },
     },
@@ -154,21 +149,16 @@ const DashboardPage: React.FC = () => {
       dataIndex: "name",
       key: "name",
       render: (name: string, record: any) => (
-        <Link to={`/admin/products/${record.id}`} className="text-primary">
+        <Link to={`/admin/products/${record.id}/edit`} className="text-primary">
           {name}
         </Link>
       ),
     },
     {
       title: "Giá",
-      dataIndex: "price",
-      key: "price",
+      dataIndex: "min_price",
+      key: "min_price",
       render: (price: number) => formatCurrency(price),
-    },
-    {
-      title: "Tồn kho",
-      dataIndex: "stock_qty",
-      key: "stock_qty",
     },
     {
       title: "Đã bán",
