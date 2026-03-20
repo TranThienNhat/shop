@@ -16,12 +16,18 @@ import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import CheckoutSuccessPage from "./pages/CheckoutSuccessPage";
 import OrdersPage from "./pages/OrdersPage";
+
+// THÊM 2 TRANG MỚI VÀO ĐÂY
+import AboutPage from "./pages/AboutPage";
+import ContactPage from "./pages/ContactPage";
+
 // Admin Pages
 import DashboardPage from "./pages/admin/DashboardPage";
 import AdminProductsPage from "./pages/admin/ProductsPage";
 import ProductFormPage from "./pages/admin/ProductFormPage";
 import CategoriesPage from "./pages/admin/CategoriesPage";
 import BrandsPage from "./pages/admin/BrandsPage";
+import BrandsPageProduct from "./pages/BrandsPage";
 import AdminOrdersPage from "./pages/admin/OrdersPage";
 import UsersPage from "./pages/admin/UsersPage";
 import CouponManagement from "./pages/admin/CouponManagement";
@@ -70,7 +76,6 @@ const App: React.FC = () => {
                         <Route path="/orders" element={<AdminOrdersPage />} />
                         <Route path="/users" element={<UsersPage />} />
                         <Route path="/coupons" element={<CouponManagement />} />
-                        {/* Add more admin routes here */}
                       </Routes>
                     </AdminLayout>
                   </ProtectedRoute>
@@ -92,6 +97,11 @@ const App: React.FC = () => {
                       <Route path="/cart" element={<CartPage />} />
                       <Route path="/checkout" element={<CheckoutPage />} />
                       <Route path="/orders" element={<OrdersPage />} />
+
+                      {/* KHAI BÁO ROUTE CHO 2 TRANG MỚI */}
+                      <Route path="/about" element={<AboutPage />} />
+                      <Route path="/contact" element={<ContactPage />} />
+                      <Route path="/brands" element={<BrandsPageProduct />} />
 
                       {/* Fallback route */}
                       <Route

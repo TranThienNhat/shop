@@ -25,18 +25,34 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
     const category_id = req.query.category_id ? parseInt(req.query.category_id as string) : undefined;
     const brand_id = req.query.brand_id ? parseInt(req.query.brand_id as string) : undefined;
     const status = req.query.status as string;
+    
+    // Lấy thêm min_price và max_price từ query
+    const min_price = req.query.min_price ? parseFloat(req.query.min_price as string) : undefined;
+    const max_price = req.query.max_price ? parseFloat(req.query.max_price as string) : undefined;
 
     const where: any = {};
     if (status && status !== "all") where.status = status;
     if (category_id) where.category_id = category_id;
     if (brand_id) where.brand_id = brand_id;
 
-    // Fix lỗi TS2353 bằng cách ép kiểu sang any
+    // Truyền thêm min_price, max_price vào hàm findAll
     const products = await Product.findAll({ 
-      where, search, limit, offset, orderBy: "id", orderDir: "DESC" 
+      where, 
+      search, 
+      limit, 
+      offset, 
+      min_price, // Thêm dòng này
+      max_price, // Thêm dòng này
+      orderBy: "id", 
+      orderDir: "DESC" 
     } as any);
     
-    const total = await Product.count({ where, search } as any);
+    const total = await Product.count({ 
+      where, 
+      search,
+      min_price, // Đừng quên đếm tổng cũng cần lọc giá
+      max_price 
+    } as any);
 
     return res.json({ 
       data: products, 

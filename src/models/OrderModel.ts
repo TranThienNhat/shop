@@ -7,18 +7,35 @@ class OrderModel extends BaseModel<IOrder> {
     super("orders");
   }
 
-  async findAll(options: any = {}) {
+async findAll(options: any = {}) {
+    let values: any[] = [];
+    
+    // Câu lệnh SQL "linh hồn" của hệ thống
     let sql = `
       SELECT o.*,
              GROUP_CONCAT(
                JSON_OBJECT(
                  'id', oi.id,
+                 'product_id', pv.product_id,    -- Lấy ID sản phẩm gốc để Review
                  'variant_id', oi.variant_id,
                  'name', p.name,
                  'variant_name', pv.variant_name,
                  'price', oi.price,
                  'quantity', oi.quantity,
-                 'image_url', (SELECT image_url FROM product_galleries WHERE product_id = p.id ORDER BY is_main DESC, sort_order ASC LIMIT 1)
+                 'image_url', (
+                    SELECT image_url 
+                    FROM product_galleries 
+                    WHERE product_id = p.id 
+                    ORDER BY is_main DESC, sort_order ASC 
+                    LIMIT 1
+                  ),
+                 -- Kiểm tra xem món này trong đơn này đã được nàng Review chưa
+                 'is_reviewed', (
+                    SELECT COUNT(*) 
+                    FROM reviews 
+                    WHERE reviews.order_id = o.id 
+                    AND reviews.product_id = pv.product_id
+                  ) > 0
                )
              ) as items_json
       FROM orders o
@@ -27,8 +44,7 @@ class OrderModel extends BaseModel<IOrder> {
       LEFT JOIN products p ON pv.product_id = p.id
     `;
 
-    const values: any[] = [];
-
+    // 1. Xử lý điều kiện WHERE (Ví dụ: lọc theo user_id)
     if (options.where) {
       const conditions = Object.keys(options.where).map((key) => {
         values.push(options.where[key]);
@@ -37,23 +53,54 @@ class OrderModel extends BaseModel<IOrder> {
       sql += ` WHERE ${conditions.join(" AND ")}`;
     }
 
+    // 2. BẮT BUỘC PHẢI CÓ GROUP BY: Để mỗi đơn hàng chỉ là 1 dòng dữ liệu
     sql += ` GROUP BY o.id`;
 
+    // 3. Xử lý Sắp xếp
     if (options.orderBy) {
-      sql += ` ORDER BY o.${options.orderBy} ${options.orderDir || "DESC"}`;
+      const direction = options.orderDir || "DESC";
+      sql += ` ORDER BY o.${options.orderBy} ${direction}`;
+    } else {
+      sql += ` ORDER BY o.created_at DESC`;
     }
 
+    // 4. Xử lý Phân trang (Limit/Offset)
     if (options.limit) {
-      sql += ` LIMIT ${options.limit}`;
-      if (options.offset) sql += ` OFFSET ${options.offset}`;
+      sql += ` LIMIT ?`;
+      values.push(Number(options.limit));
+      if (options.offset) {
+        sql += ` OFFSET ?`;
+        values.push(Number(options.offset));
+      }
     }
 
-    const [rows]: any = await this.db.query(sql, values);
-    return rows.map((row: any) => ({
-      ...row,
-      // Fix lỗi JSON.parse nếu items_json quá dài hoặc null
-      items: row.items_json ? JSON.parse(`[${row.items_json}]`) : [],
-    }));
+    try {
+      const [rows]: any = await this.db.query(sql, values);
+
+      // 5. PARSE DỮ LIỆU: Biến chuỗi items_json thành mảng JSON xịn cho Frontend
+      return rows.map((row: any) => {
+        let items = [];
+        if (row.items_json) {
+          try {
+            // GROUP_CONCAT trả về chuỗi {obj1},{obj2} -> Cần bọc [] để thành mảng
+            items = JSON.parse(`[${row.items_json}]`);
+          } catch (e) {
+            console.error(`Lỗi Parse JSON cho đơn hàng ${row.id}:`, e);
+            items = [];
+          }
+        }
+        
+        // Trả về dữ liệu sạch sẽ cho Controller
+        return {
+          ...row,
+          items: items,
+          items_json: undefined // Ẩn cột thô này đi cho nhẹ
+        };
+      });
+    } catch (error) {
+      console.error("Lỗi thực thi SQL tại OrderModel.findAll:", error);
+      throw error;
+    }
   }
 
   // --- SỬA LẠI HÀM NÀY ĐỂ KHỚP VỚI SCHEMA MỚI ---

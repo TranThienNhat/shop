@@ -1,104 +1,116 @@
 import { Request, Response } from "express";
 import Review from "../models/ReviewModel";
-import { IUser } from "../interfaces/User"; // 1. Import thêm Interface User
+import Order from "../models/OrderModel";
+import Product from "../models/ProductModel";
 
-// 2. Định nghĩa Interface mở rộng để TS hiểu req.user
-interface AuthRequest extends Request {
-  user?: IUser;
-}
-
-export const createReview = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+// 1. Tạo đánh giá mới
+export const createReview = async (req: Request, res: Response) => {
   try {
-    // 3. Ép kiểu req sang AuthRequest
-    const authReq = req as AuthRequest;
-    const userId = authReq.user?.id;
+    const { variant_id, order_id, rating, comment } = req.body; // Nhận variant_id
+    const userId = (req as any).user.id;
 
-    if (!userId) {
-      return res.status(401).json({ message: "Vui lòng đăng nhập" });
+    // 1. Ép kiểu
+    const vId = parseInt(variant_id);
+    const oId = parseInt(order_id);
+    const star = parseInt(rating);
+
+    if (isNaN(vId) || isNaN(oId)) {
+      return res.status(400).json({ message: "Thiếu thông tin phiên bản hoặc đơn hàng" });
     }
 
-    const { product_id, rating, comment } = req.body;
+    // 2. TÌM PRODUCT_ID TỪ VARIANT_ID (Đỡ phải lấy ở Order)
+    const [variant]: any = await (Review as any).db.query(
+      "SELECT product_id FROM product_variants WHERE id = ?",
+      [vId]
+    );
 
-    // 1. Validate
-    if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ message: "Số sao từ 1 đến 5" });
+    if (!variant || variant.length === 0) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm này nàng ơi!" });
+    }
+    const pId = variant[0].product_id;
+
+    // 3. Kiểm tra đơn hàng (Phải completed mới được đánh giá)
+    const order = await Order.findById(oId);
+    if (!order || order.user_id !== userId || order.status !== 'completed') {
+      return res.status(403).json({ message: "Đơn hàng phải hoàn tất mới đánh giá được nhé!" });
     }
 
-    // 2. Check quyền: Phải mua rồi mới được review
-    // (Bỏ qua bước này nếu muốn cho review tự do)
-    /* const canReview = await Review.hasPurchased(userId!, product_id);
-        if (!canReview) {
-             return res.status(403).json({ message: "Bạn phải mua sản phẩm này mới được đánh giá" });
-        }
-        */
+    // 4. Kiểm tra trùng lặp
+    const [existing]: any = await (Review as any).db.query(
+      "SELECT id FROM reviews WHERE user_id = ? AND product_id = ? AND order_id = ?",
+      [userId, pId, oId]
+    );
+    
+    if (existing && existing.length > 0) {
+      return res.status(400).json({ message: "Nàng đã gửi đánh giá cho sản phẩm này rồi ✨" });
+    }
 
-    // 3. Tạo review
+    // 5. Lưu đánh giá thành công
     await Review.create({
       user_id: userId,
-      product_id,
-      rating,
-      comment,
+      product_id: pId, // Lưu ID sản phẩm gốc
+      order_id: oId,
+      rating: star,
+      comment: comment?.trim() || "Sản phẩm tuyệt vời!",
+      is_approved: 1 
     });
 
-    return res.status(201).json({ message: "Đánh giá thành công" });
+    return res.json({ success: true, message: "Cảm ơn nàng đã để lại đánh giá ✨" });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Lỗi server" });
+    console.error("Review Error:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống rồi nàng ạ!" });
   }
 };
 
-export const getProductReviews = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+// 2. Lấy danh sách đánh giá theo ID sản phẩm (Dành cho hiển thị tại trang chi tiết)
+export const getProductReviews = async (req: Request, res: Response) => {
   try {
     const { productId } = req.params;
-
-    // Lưu ý: Truy cập ["db"] là cách "hack" để vào property protected của BaseModel.
-    // Cách chuẩn hơn là viết hàm getReviewsByProductId trong ReviewModel.
-    // Nhưng để chạy nhanh thì giữ nguyên cũng được.
-    const sql = `
-            SELECT r.*, u.name as user_name, u.avatar 
-            FROM reviews r 
-            JOIN users u ON r.user_id = u.id 
-            WHERE r.product_id = ? 
-            ORDER BY r.created_at DESC
-        `;
-
-    // Ép kiểu any cho Review để tránh lỗi truy cập private/protected property "db"
-    const [reviews] = await (Review as any)["db"].query(sql, [productId]);
-
-    return res.json(reviews);
+    const reviews = await Review.getByProductId(parseInt(productId));
+    
+    return res.json({ success: true, data: reviews });
   } catch (error) {
-    console.error(error);
+    return res.status(500).json({ message: "Không thể tải đánh giá sản phẩm." });
+  }
+};
+
+// 4. Quản lý: Lấy toàn bộ đánh giá (Dành cho Admin)
+export const getAllReviews = async (req: Request, res: Response) => {
+  try {
+    const sql = `
+      SELECT r.*, u.name as user_name, p.name as product_name
+      FROM reviews r
+      JOIN users u ON r.user_id = u.id
+      JOIN products p ON r.product_id = p.id
+      ORDER BY r.created_at DESC
+    `;
+    const [rows] = await (Review as any).db.query(sql);
+    return res.json({ success: true, data: rows });
+  } catch (error) {
     return res.status(500).json({ message: "Lỗi server" });
   }
 };
 
-export const getProductReviewsBySlug = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
+// 5. Quản lý: Duyệt hoặc ẩn đánh giá (Dành cho Admin)
+export const toggleApproveReview = async (req: Request, res: Response) => {
   try {
-    const { slug } = req.params;
+    const { id } = req.params;
+    const { is_approved } = req.body; // 0 hoặc 1
 
-    const sql = `
-            SELECT r.*, u.name as user_name, u.avatar 
-            FROM reviews r 
-            JOIN users u ON r.user_id = u.id 
-            JOIN products p ON r.product_id = p.id
-            WHERE p.slug = ? 
-            ORDER BY r.created_at DESC
-        `;
-
-    const [reviews] = await (Review as any)["db"].query(sql, [slug]);
-
-    return res.json(reviews);
+    await Review.update(parseInt(id), { is_approved });
+    return res.json({ message: "Cập nhật trạng thái đánh giá thành công." });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Lỗi server" });
+    return res.status(500).json({ message: "Lỗi cập nhật." });
+  }
+};
+
+// 6. Xóa đánh giá
+export const deleteReview = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await Review.delete(parseInt(id));
+    return res.json({ message: "Đã xóa đánh giá." });
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi xóa đánh giá." });
   }
 };

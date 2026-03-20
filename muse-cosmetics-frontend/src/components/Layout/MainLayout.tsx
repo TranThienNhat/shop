@@ -53,6 +53,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       key: "/",
       label: <Link to="/">Trang chủ</Link>,
     },
+    { key: "/brands", label: <Link to="/brands">Thương hiệu</Link> },
     {
       key: "/products",
       label: <Link to="/products">Sản phẩm</Link>,

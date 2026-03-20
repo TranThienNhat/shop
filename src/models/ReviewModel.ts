@@ -1,22 +1,21 @@
 import { BaseModel } from "../core/BaseModel";
-import { IReview } from "../interfaces/Review";
+import pool from "../config/db";
 
-class ReviewModel extends BaseModel<IReview> {
+class ReviewModel extends BaseModel<any> {
   constructor() {
     super("reviews");
   }
 
-  // Kiểm tra user đã mua sản phẩm chưa (qua order_items -> product_variants -> products)
-  async hasPurchased(userId: number, productId: number): Promise<boolean> {
+  async getByProductId(productId: number) {
     const sql = `
-      SELECT COUNT(*) as count
-      FROM orders o
-      JOIN order_items oi ON o.id = oi.order_id
-      JOIN product_variants pv ON oi.variant_id = pv.id
-      WHERE o.user_id = ? AND pv.product_id = ? AND o.status = 'completed'
+      SELECT r.*, u.name as user_name 
+      FROM reviews r
+      JOIN users u ON r.user_id = u.id
+      WHERE r.product_id = ? AND r.is_approved = 1
+      ORDER BY r.created_at DESC
     `;
-    const [rows]: any[] = await this.db.query(sql, [userId, productId]);
-    return rows[0].count > 0;
+    const [rows] = await this.db.query(sql, [productId]);
+    return rows;
   }
 }
 
