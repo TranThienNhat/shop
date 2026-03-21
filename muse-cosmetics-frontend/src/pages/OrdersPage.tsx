@@ -266,7 +266,7 @@ const OrdersPage: React.FC = () => {
                     </div>
                     <div className="bg-background p-5 rounded-xl border border-gray/10 h-full flex flex-col justify-center">
                         <Text strong className="block text-charcoal mb-1 text-sm">
-                          {selectedOrder.payment_method === 'cod' ? 'Thanh toán khi nhận hàng (COD)' : 'Chuyển khoản'}
+                          {selectedOrder.payment_method === 'cod' ? 'Chuyển khoản' : 'Thanh toán khi nhận hàng (COD)'}
                         </Text>
                         <Text type="secondary" className="block text-xs text-gray">
                           Ngày đặt: {new Date(selectedOrder.created_at).toLocaleString("vi-VN")}
