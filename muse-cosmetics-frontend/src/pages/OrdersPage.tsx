@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Card, Typography, Spin, Empty, Tag, Button, Modal, Divider, Row, Col, Rate, Input, message } from "antd";
+import { Card, Typography, Spin, Empty, Button, Modal, Divider, Row, Col, Rate, Input, message, Popconfirm } from "antd";
 import { Link, Navigate } from "react-router-dom";
-import { ShoppingBag, ChevronRight, Clock, MapPin, Phone, User, Package, CreditCard, Star, CheckCircle } from "lucide-react";
+import { ShoppingBag, ChevronRight, Clock, MapPin, Phone, Package, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../utils/api";
 import { getImageUrl, formatCurrency } from "../utils/helpers";
@@ -14,11 +14,8 @@ const OrdersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
-  // State cho Modal chi tiết đơn hàng
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // State cho Modal Đánh giá sản phẩm
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [reviewData, setReviewData] = useState({
     variant_id: 0,
@@ -42,6 +39,25 @@ const OrdersPage: React.FC = () => {
       console.error("Lỗi tải đơn hàng:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async (orderId: number) => {
+    try {
+      setSubmitting(true);
+      await api.put(`/orders/${orderId}`, { status: "cancelled" });
+      message.success("Đã hủy đơn hàng thành công.");
+      
+      // Cập nhật state tại chỗ để UI thay đổi ngay lập tức
+      const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: "cancelled" } : o);
+      setOrders(updatedOrders);
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, status: "cancelled" });
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || "Không thể hủy đơn hàng lúc này.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -69,23 +85,20 @@ const OrdersPage: React.FC = () => {
         variant_id: reviewData.variant_id,
         order_id: reviewData.order_id,
         rating: reviewData.rating,
-        comment: reviewData.comment || "Sản phẩm tuyệt vời, mình rất ưng ý!"
+        comment: reviewData.comment || "Sản phẩm tuyệt vời!"
       });
       
-      message.success("Cảm ơn bạn đã chia sẻ đánh giá ✨");
+      message.success("Cảm ơn bạn đã gửi đánh giá ✨");
       setIsReviewModalOpen(false);
 
-      // Cập nhật trạng thái đã đánh giá
       const updateReviewStatus = (items: any[]) => 
         items.map(item => item.variant_id === reviewData.variant_id ? { ...item, is_reviewed: true } : item);
 
       setOrders(prev => prev.map(o => o.id === reviewData.order_id ? { ...o, items: updateReviewStatus(o.items) } : o));
-      if (selectedOrder) {
-        setSelectedOrder({ ...selectedOrder, items: updateReviewStatus(selectedOrder.items) });
-      }
+      if (selectedOrder) setSelectedOrder({ ...selectedOrder, items: updateReviewStatus(selectedOrder.items) });
 
     } catch (error: any) {
-      message.error(error.response?.data?.message || "Bạn đã đánh giá sản phẩm này rồi!");
+      message.error(error.response?.data?.message || "Bạn đã đánh giá sản phẩm này rồi.");
     } finally {
       setSubmitting(false);
     }
@@ -96,11 +109,11 @@ const OrdersPage: React.FC = () => {
       pending: { color: "text-yellow-600", bg: "bg-yellow-50", text: "Chờ xác nhận" },
       processing: { color: "text-blue-600", bg: "bg-blue-50", text: "Đang xử lý" },
       shipped: { color: "text-cyan-600", bg: "bg-cyan-50", text: "Đang giao hàng" },
-      completed: { color: "text-green-600", bg: "bg-green-50", text: "Đã hoàn tất" },
+      completed: { color: "text-green-600", bg: "bg-green-50", text: "Hoàn tất" },
       cancelled: { color: "text-red-600", bg: "bg-red-50", text: "Đã hủy" },
     };
     const s = config[status] || config.pending;
-    return <span className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${s.bg} ${s.color}`}>{s.text}</span>;
+    return <span className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border ${s.bg} ${s.color} border-${s.color.split('-')[1]}-100`}>{s.text}</span>;
   };
 
   if (!authLoading && !isAuthenticated) return <Navigate to="/login" replace />;
@@ -114,7 +127,7 @@ const OrdersPage: React.FC = () => {
         <div className="text-center mb-12">
           <Title level={2} className="!font-serif !text-charcoal !mb-2">Đơn hàng của bạn</Title>
           <div className="w-12 h-1 bg-primary/30 mx-auto mb-4 rounded-full"></div>
-          <Text className="text-gray italic">Quản lý và theo dõi lịch sử mua sắm của bạn.</Text>
+          <Text className="text-gray italic text-base">Quản lý và theo dõi lịch sử mua sắm của bạn.</Text>
         </div>
 
         {orders.length === 0 ? (
@@ -133,55 +146,75 @@ const OrdersPage: React.FC = () => {
             {orders.map((order) => (
               <Card 
                 key={order.id} 
-                className="border border-gray/10 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all cursor-pointer group bg-white"
-                onClick={() => openDetail(order)}
+                className="border border-gray/10 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all group bg-white"
                 bodyStyle={{ padding: '24px' }}
               >
-                <div className="flex justify-between items-start md:items-center mb-6 border-b border-gray/10 pb-4 flex-col md:flex-row gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                      <ShoppingBag size={20} />
+                <div className="cursor-pointer" onClick={() => openDetail(order)}>
+                  <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6 border-b border-gray/10 pb-4 gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                            <ShoppingBag size={20} />
+                        </div>
+                        <div>
+                            <Text strong className="block text-charcoal text-base">{order.order_code}</Text>
+                            <Text className="text-xs text-gray flex items-center gap-1 mt-1">
+                                <Clock size={14} /> {new Date(order.created_at).toLocaleDateString("vi-VN")}
+                            </Text>
+                        </div>
                     </div>
-                    <div>
-                      <Text strong className="block text-charcoal text-base">{order.order_code}</Text>
-                      <Text className="text-xs text-gray flex items-center gap-1 mt-1">
-                        <Clock size={14} /> {new Date(order.created_at).toLocaleDateString("vi-VN")}
-                      </Text>
-                    </div>
+                    {getStatusTag(order.status)}
                   </div>
-                  {getStatusTag(order.status)}
-                </div>
 
-                <div className="space-y-4">
-                  {order.items.slice(0, 1).map((item: any) => (
-                    <div key={item.id} className="flex gap-4 items-center">
-                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray/5 flex-shrink-0 border border-gray/10 p-1">
-                        <img src={getImageUrl(item.image_url)} alt={item.name} className="w-full h-full object-cover rounded-md" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <Text strong className="block text-sm text-charcoal truncate mb-1">{item.name}</Text>
-                        <Text type="secondary" className="text-[11px] uppercase tracking-wider bg-background border border-gray/10 px-2 py-0.5 rounded-md inline-block mb-1">{item.variant_name}</Text>
-                        <div className="mt-1"><Text className="text-xs text-gray">Số lượng: {item.quantity}</Text></div>
-                      </div>
-                      <div className="text-right">
-                         <Text className="block font-medium text-base text-primary">{formatCurrency(Number(item.price) * item.quantity)}</Text>
-                      </div>
+                  <div className="space-y-4">
+                    {order.items.slice(0, 1).map((item: any) => (
+                        <div key={item.id} className="flex gap-4 items-center">
+                          <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray/5 flex-shrink-0 border border-gray/10 p-1">
+                              <img src={getImageUrl(item.image_url)} alt={item.name} className="w-full h-full object-cover rounded-md" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                              <Text strong className="block text-sm text-charcoal truncate mb-1">{item.name}</Text>
+                              <Text type="secondary" className="text-[11px] uppercase tracking-wider bg-background border border-gray/10 px-2 py-0.5 rounded-md inline-block mb-1">{item.variant_name}</Text>
+                              <div className="mt-1"><Text className="text-xs text-gray">SL: {item.quantity}</Text></div>
+                          </div>
+                          <Text className="font-medium text-base text-primary">{formatCurrency(Number(item.price) * item.quantity)}</Text>
+                        </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-gray/10 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                      <Button type="text" className="text-primary text-sm p-0 flex items-center gap-1 font-medium hover:text-primary/80 transition-colors">
+                          Xem chi tiết <ChevronRight size={16} />
+                      </Button>
+
+                      {/* NÚT HỦY ĐƠN Ở BÊN NGOÀI DANH SÁCH */}
+                      {(order.status === "pending" || order.status === "processing") && (
+                          <Popconfirm
+                              title="Xác nhận hủy đơn hàng này?"
+                              description="Bạn có chắc chắn muốn hủy đơn hàng này không?"
+                              onConfirm={(e) => { e?.stopPropagation(); handleCancelOrder(order.id); }}
+                              onCancel={(e) => e?.stopPropagation()}
+                              okText="Hủy đơn"
+                              cancelText="Đóng"
+                              okButtonProps={{ danger: true, loading: submitting, className: "rounded-md" }}
+                              cancelButtonProps={{ className: "rounded-md" }}
+                              placement="topLeft"
+                          >
+                              <Button 
+                                type="text" 
+                                danger 
+                                className="text-sm font-medium p-0 flex items-center hover:bg-transparent" 
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                  Hủy đơn
+                              </Button>
+                          </Popconfirm>
+                      )}
                     </div>
-                  ))}
-                  {order.items.length > 1 && (
-                    <Text type="secondary" className="text-xs italic pl-24 text-gray">
-                      + và {order.items.length - 1} sản phẩm khác...
-                    </Text>
-                  )}
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-gray/10 flex justify-between items-end">
-                  <Text className="text-primary flex items-center text-sm font-medium group-hover:gap-2 transition-all">
-                    Xem chi tiết <ChevronRight size={16} />
-                  </Text>
-                  <div className="text-right">
-                    <Text className="text-gray text-[10px] uppercase tracking-widest block mb-1">Tổng thanh toán</Text>
-                    <Text className="text-xl font-serif text-primary font-bold leading-none">{formatCurrency(Number(order.final_amount))}</Text>
+                    <div className="text-right">
+                      <Text className="text-gray text-[10px] uppercase tracking-widest block mb-1">Tổng thanh toán</Text>
+                      <Text className="text-xl font-serif text-primary font-bold leading-none">{formatCurrency(Number(order.final_amount))}</Text>
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -190,7 +223,7 @@ const OrdersPage: React.FC = () => {
         )}
       </div>
 
-      {/* MODAL CHI TIẾT ĐƠN HÀNG */}
+      {/* MODAL CHI TIẾT */}
       <Modal
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
@@ -202,7 +235,6 @@ const OrdersPage: React.FC = () => {
       >
         {selectedOrder && (
           <div>
-            {/* Header Modal */}
             <div className="bg-background p-6 md:p-8 border-b border-gray/10 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
@@ -234,10 +266,10 @@ const OrdersPage: React.FC = () => {
                     </div>
                     <div className="bg-background p-5 rounded-xl border border-gray/10 h-full flex flex-col justify-center">
                         <Text strong className="block text-charcoal mb-1 text-sm">
-                          {selectedOrder.payment_method === 'cod' ? 'Chuyển khoản' : 'Thanh toán khi nhận hàng (COD)'}
+                          {selectedOrder.payment_method === 'cod' ? 'Thanh toán khi nhận hàng (COD)' : 'Chuyển khoản'}
                         </Text>
                         <Text type="secondary" className="block text-xs text-gray">
-                          {selectedOrder.status === 'completed' ? 'Giao dịch đã hoàn tất.' : 'Vui lòng chuẩn bị tiền mặt khi nhận hàng.'}
+                          Ngày đặt: {new Date(selectedOrder.created_at).toLocaleString("vi-VN")}
                         </Text>
                     </div>
                 </Col>
@@ -245,7 +277,6 @@ const OrdersPage: React.FC = () => {
 
               <Divider className="border-gray/10" />
 
-              {/* Danh sách sản phẩm trong Modal */}
               <div className="my-8 space-y-4">
                 <Title level={5} className="!font-serif !mb-4 text-charcoal flex items-center gap-2">
                     <ShoppingBag size={18} className="text-primary" /> Sản phẩm đã mua
@@ -262,11 +293,8 @@ const OrdersPage: React.FC = () => {
                       </span>
                       <Text type="secondary" className="text-xs block">SL: {item.quantity}</Text>
                     </div>
-                    
                     <div className="text-left sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0 gap-3">
                         <Text className="font-medium text-charcoal text-base">{formatCurrency(Number(item.price) * item.quantity)}</Text>
-                        
-                        {/* Nút đánh giá */}
                         {selectedOrder.status === 'completed' && (
                             item.is_reviewed ? (
                                 <div className="flex items-center gap-1 text-[11px] text-green-600 font-medium bg-green-50 px-2 py-1 rounded-md border border-green-100">
@@ -287,7 +315,6 @@ const OrdersPage: React.FC = () => {
                 ))}
               </div>
 
-              {/* Tổng kết tiền */}
               <div className="bg-background p-6 md:p-8 rounded-2xl border border-gray/10">
                   <div className="space-y-3">
                       <div className="flex justify-between text-sm text-gray">
@@ -311,59 +338,88 @@ const OrdersPage: React.FC = () => {
                       </div>
                   </div>
               </div>
-              
-              <div className="text-center mt-6">
-                  <Button type="text" onClick={() => setIsModalOpen(false)} className="text-gray hover:text-charcoal font-medium">
-                    Đóng
-                  </Button>
-              </div>
+
+              {/* NÚT HỦY ĐƠN TRONG MODAL */}
+              {(selectedOrder.status === "pending" || selectedOrder.status === "processing") && (
+                <div className="mt-8 pt-6 border-t border-gray/10">
+                    <div className="flex items-start gap-3 bg-red-50/50 p-4 rounded-xl border border-red-100 mb-6">
+                        <AlertCircle size={20} className="text-red-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <Text strong className="text-red-600 block text-sm mb-1">Bạn muốn hủy đơn hàng?</Text>
+                            <Text className="text-red-500/80 text-xs leading-relaxed">Đơn hàng chỉ có thể hủy khi chưa được giao cho đơn vị vận chuyển. Các voucher đã sử dụng sẽ được hoàn lại (nếu có).</Text>
+                        </div>
+                    </div>
+                    <Popconfirm
+                        title="Xác nhận hủy đơn hàng này?"
+                        description="Hành động này không thể hoàn tác."
+                        onConfirm={() => handleCancelOrder(selectedOrder.id)}
+                        okText="Hủy đơn"
+                        cancelText="Đóng"
+                        okButtonProps={{ danger: true, loading: submitting, className: "rounded-md" }}
+                        cancelButtonProps={{ className: "rounded-md" }}
+                        placement="top"
+                    >
+                        <Button block danger type="primary" size="large" className="h-12 rounded-lg font-medium text-base shadow-sm">
+                            Xác nhận hủy đơn
+                        </Button>
+                    </Popconfirm>
+                </div>
+              )}
+
+              {!["pending", "processing"].includes(selectedOrder.status) && (
+                  <div className="text-center mt-8">
+                      <Button type="text" onClick={() => setIsModalOpen(false)} className="text-gray hover:text-charcoal font-medium">
+                        Đóng cửa sổ
+                      </Button>
+                  </div>
+              )}
             </div>
           </div>
         )}
       </Modal>
 
-      {/* MODAL VIẾT ĐÁNH GIÁ */}
-      <Modal
-        open={isReviewModalOpen}
-        onCancel={() => setIsReviewModalOpen(false)}
-        footer={null}
-        centered
-        width={450}
+      {/* MODAL REVIEW */}
+      <Modal 
+        open={isReviewModalOpen} 
+        onCancel={() => setIsReviewModalOpen(false)} 
+        footer={null} 
+        centered 
+        width={450} 
         styles={{ content: { borderRadius: "16px", padding: "32px" } }}
       >
         <div className="text-center">
-            <div className="w-20 h-20 mx-auto rounded-lg overflow-hidden mb-5 bg-gray/5 border border-gray/10">
-                <img src={getImageUrl(reviewData.image_url)} className="w-full h-full object-cover" alt="Product" />
+            <div className="w-20 h-20 mx-auto rounded-lg overflow-hidden mb-5 bg-gray/5 border border-gray/10 p-1">
+                <img src={getImageUrl(reviewData.image_url)} className="w-full h-full object-cover rounded-md" alt="Product" />
             </div>
             <Title level={4} className="!font-serif !mb-1 text-charcoal">Đánh giá sản phẩm</Title>
             <Text className="text-xs block mb-6 text-gray line-clamp-1 px-4">{reviewData.name}</Text>
             
             <div className="mb-8">
                 <Rate 
-                    value={reviewData.rating} 
-                    onChange={(val) => setReviewData({...reviewData, rating: val})}
-                    className="text-yellow-400 text-3xl mb-2" 
+                  value={reviewData.rating} 
+                  onChange={(val) => setReviewData({...reviewData, rating: val})} 
+                  className="text-yellow-400 text-3xl mb-2" 
                 />
                 <div className="text-xs text-gray mt-2">Mức độ hài lòng của bạn</div>
             </div>
 
             <Input.TextArea 
-                rows={4} 
-                placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này..." 
-                className="rounded-lg border-gray/20 p-4 mb-6 focus:border-primary focus:shadow-none text-base bg-background"
-                value={reviewData.comment}
-                onChange={(e) => setReviewData({...reviewData, comment: e.target.value})}
+              rows={4} 
+              placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này..." 
+              className="rounded-lg border-gray/20 p-4 mb-6 focus:border-primary focus:shadow-none text-base bg-background" 
+              value={reviewData.comment} 
+              onChange={(e) => setReviewData({...reviewData, comment: e.target.value})} 
             />
 
             <Button 
-                type="primary" 
-                block 
-                size="large"
-                loading={submitting}
-                className="bg-primary border-primary h-12 rounded-lg font-medium text-base hover:!bg-primary/90 transition-all"
-                onClick={handleSubmitReview}
+              type="primary" 
+              block 
+              size="large" 
+              loading={submitting} 
+              className="bg-primary border-primary h-12 rounded-lg font-medium text-base hover:!bg-primary/90 transition-all" 
+              onClick={handleSubmitReview}
             >
-                Gửi đánh giá
+              Gửi đánh giá
             </Button>
         </div>
       </Modal>

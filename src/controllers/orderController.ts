@@ -109,27 +109,69 @@ export const getAllOrders = async (req: Request, res: Response): Promise<Respons
   }
 };
 
-export const updateOrderStatus = async (req: Request, res: Response): Promise<Response> => {
+export const updateOrderStatus = async (req: AuthRequest, res: Response): Promise<Response> => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const orderId = parseInt(id);
+    const currentUser = req.user; // Lấy từ middleware authenticate
 
-    const validStatuses = ["pending", "processing", "shipped", "completed", "cancelled"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: "Trạng thái không hợp lệ" });
+    // 1. Tìm đơn hàng hiện tại
+    const currentOrder = await Order.findById(orderId);
+    if (!currentOrder) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng này nàng ơi!" });
     }
 
-    const currentOrder = await Order.findById(parseInt(id));
-    if (!currentOrder) return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    // 2. KIỂM TRA PHÂN QUYỀN (Logic mấu chốt)
+    const isAdmin = currentUser?.role === "admin";
+    const isOwner = currentUser?.id === currentOrder.user_id;
 
+    if (!isAdmin) {
+      // Nếu không phải Admin thì bắt buộc phải là chủ đơn
+      if (!isOwner) {
+        return res.status(403).json({ message: "Nàng không có quyền chỉnh sửa đơn hàng của người khác" });
+      }
+      // Chủ đơn CHỈ được phép chuyển trạng thái sang "cancelled"
+      if (status !== "cancelled") {
+        return res.status(403).json({ message: "Nàng chỉ có thể yêu cầu hủy đơn hàng thôi ạ" });
+      }
+    }
+
+    // 3. Kiểm tra trạng thái đơn hàng hiện tại (Chống hủy đơn đã giao/xong)
     if (currentOrder.status === "cancelled" || currentOrder.status === "completed") {
-      return res.status(400).json({ message: "Không thể thay đổi trạng thái đơn hàng đã hủy hoặc hoàn tất" });
+      return res.status(400).json({ message: "Đơn hàng này đã đóng, không thể thay đổi nữa" });
+    }
+    
+    // Nếu là khách hàng, chỉ được hủy khi đơn chưa giao (pending hoặc processing)
+    if (!isAdmin && currentOrder.status !== "pending" && currentOrder.status !== "processing") {
+       return res.status(400).json({ message: "Đơn hàng đã được gửi đi, nàng vui lòng liên hệ hotline để hỗ trợ nhé" });
     }
 
-    await Order.update(parseInt(id), { status });
-    return res.json({ message: "Cập nhật trạng thái đơn hàng thành công" });
+    // 4. XỬ LÝ HOÀN KHO (Nếu status mới là cancelled)
+    if (status === "cancelled") {
+      const [items]: any = await (Order as any).db.query(
+        "SELECT variant_id, quantity FROM order_items WHERE order_id = ?",
+        [orderId]
+      );
+
+      for (const item of items) {
+        await (Order as any).db.query(
+          "UPDATE product_variants SET stock_qty = stock_qty + ? WHERE id = ?",
+          [item.quantity, item.variant_id]
+        );
+      }
+    }
+
+    // 5. Cập nhật trạng thái
+    await Order.update(orderId, { status });
+
+    return res.json({ 
+      success: true, 
+      message: status === "cancelled" ? "Hủy đơn và hoàn trả kho thành công ✨" : "Cập nhật trạng thái thành công" 
+    });
+
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Lỗi server" });
+    console.error(">>> Order Update Error:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống, nàng vui lòng thử lại sau" });
   }
 };

@@ -15,6 +15,6 @@ router.get("/my-orders", authenticate, getMyOrders);
 
 // Admin routes
 router.get("/", authenticate, requireAdmin, getAllOrders);
-router.put("/:id", authenticate, requireAdmin, updateOrderStatus);
+router.put("/:id", authenticate, updateOrderStatus);
 
 export default router;
