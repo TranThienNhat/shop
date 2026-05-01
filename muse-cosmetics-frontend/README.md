@@ -1,6 +1,6 @@
-# Muse Cosmetics Frontend
+# Linh Cosmetics Frontend
 
-Ứng dụng React frontend cho shop mỹ phẩm cao cấp Muse Cosmetics.
+Ứng dụng React frontend cho shop mỹ phẩm cao cấp Linh Cosmetics.
 
 ## 🚀 Tech Stack
 
@@ -70,7 +70,7 @@ src/
 1. **Install dependencies**:
 
 ```bash
-cd muse-cosmetics-frontend
+cd Linh-cosmetics-frontend
 npm install
 ```
 
@@ -234,9 +234,9 @@ Extended configuration for:
 ## 📞 Support
 
 - **Hotline**: 1900 1234
-- **Email**: info@musecosmetics.vn
+- **Email**: info@Linhcosmetics.vn
 - **Address**: 123 Nguyễn Huệ, Q1, TP.HCM
 
 ---
 
-Developed with ❤️ for Muse Cosmetics
+Developed with ❤️ for Linh Cosmetics

@@ -79,7 +79,7 @@ const LoginPage: React.FC = () => {
               Đăng nhập
             </Title>
             <Paragraph className="text-gray">
-              Chào mừng bạn quay trở lại với Muse Cosmetics
+              Chào mừng bạn quay trở lại với Linh Cosmetics
             </Paragraph>
           </div>
 

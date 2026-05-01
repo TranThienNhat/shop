@@ -27,7 +27,7 @@ const CheckoutSuccessPage: React.FC = () => {
           </Title>
           
           <Paragraph className="text-gray text-base max-w-md mx-auto leading-relaxed mb-8">
-            Cảm ơn bạn đã lựa chọn Muse Cosmetics. Đơn hàng của bạn đã được hệ thống ghi nhận và đang trong quá trình chuẩn bị.
+            Cảm ơn bạn đã lựa chọn Linh Cosmetics. Đơn hàng của bạn đã được hệ thống ghi nhận và đang trong quá trình chuẩn bị.
           </Paragraph>
 
           {/* Box Mã đơn hàng */}

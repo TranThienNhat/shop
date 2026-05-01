@@ -92,7 +92,7 @@ const CheckoutPage: React.FC = () => {
             <Title level={2} className="!font-serif !text-charcoal !m-0 tracking-tight">Thanh toán</Title>
           </div>
           <div className="w-full md:w-72">
-            <Steps current={0} size="small" className="muse-steps">
+            <Steps current={0} size="small" className="Linh-steps">
               <Step title="Thông tin giao hàng" />
               <Step title="Hoàn tất" />
             </Steps>

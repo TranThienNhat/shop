@@ -14,14 +14,14 @@ const AboutPage: React.FC = () => {
           {/* 1. HERO SECTION */}
           <div className="text-center mb-20 mt-6">
             <Text className="text-primary uppercase tracking-[0.3em] font-bold text-xs mb-4 block">
-              Since 2024 • Muse Cosmetics
+              Since 2024 • Linh Cosmetics
             </Text>
             <Title level={1} className="!font-serif !text-4xl md:!text-5xl !text-charcoal !mb-6 leading-tight">
               Đánh thức vẻ đẹp <br /> <span className="italic text-primary">thuần khiết</span> của nàng
             </Title>
             <div className="w-16 h-1 bg-primary/30 mx-auto rounded-full mb-6"></div>
             <Paragraph className="text-gray text-base md:text-lg italic font-serif leading-relaxed max-w-2xl mx-auto">
-              "Tại Muse, chúng tôi tin rằng mỹ phẩm không chỉ để trang điểm, <br className="hidden md:block"/> 
+              "Tại Linh, chúng tôi tin rằng mỹ phẩm không chỉ để trang điểm, <br className="hidden md:block"/> 
               mà là để tôn vinh câu chuyện riêng của mỗi người phụ nữ."
             </Paragraph>
           </div>
@@ -34,7 +34,7 @@ const AboutPage: React.FC = () => {
                   <img 
                     src="https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=1974&auto=format&fit=crop" 
                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                    alt="Câu chuyện của Muse"
+                    alt="Câu chuyện của Linh"
                   />
                 </div>
                 <div className="absolute -bottom-4 -left-4 w-40 h-40 bg-primary/10 rounded-full blur-2xl -z-10"></div>
@@ -44,10 +44,10 @@ const AboutPage: React.FC = () => {
               <div className="space-y-5">
                 <Title level={2} className="!font-serif !text-3xl text-charcoal">Câu chuyện từ tâm hồn</Title>
                 <Paragraph className="text-gray text-base leading-relaxed">
-                  Muse Cosmetics ra đời từ những ngày đầu đông năm 2024, bắt nguồn từ khát khao tìm kiếm những giá trị thực trong ngành làm đẹp. Chúng tôi không theo đuổi những xu hướng chớp nhoáng, Muse chọn đồng hành cùng bạn trong hành trình chăm sóc bản thân bền vững.
+                  Linh Cosmetics ra đời từ những ngày đầu đông năm 2024, bắt nguồn từ khát khao tìm kiếm những giá trị thực trong ngành làm đẹp. Chúng tôi không theo đuổi những xu hướng chớp nhoáng, Linh chọn đồng hành cùng bạn trong hành trình chăm sóc bản thân bền vững.
                 </Paragraph>
                 <Paragraph className="text-gray text-base leading-relaxed">
-                  Mỗi sản phẩm tại Muse đều được tuyển chọn khắt khe, từ thành phần thiên nhiên lành tính đến bao bì tinh tế, mang lại trải nghiệm vỗ về làn da và tâm trí sau những giờ làm việc mệt mỏi.
+                  Mỗi sản phẩm tại Linh đều được tuyển chọn khắt khe, từ thành phần thiên nhiên lành tính đến bao bì tinh tế, mang lại trải nghiệm vỗ về làn da và tâm trí sau những giờ làm việc mệt mỏi.
                 </Paragraph>
                 <Link to="/products" className="inline-flex items-center gap-2 text-primary font-medium hover:text-primary/80 transition-all mt-2 group">
                   Khám phá bộ sưu tập <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
@@ -59,7 +59,7 @@ const AboutPage: React.FC = () => {
           {/* 3. GIÁ TRỊ CỐT LÕI */}
           <div className="mb-24">
             <div className="text-center mb-12">
-              <Title level={2} className="!font-serif !text-3xl text-charcoal">Triết lý của Muse</Title>
+              <Title level={2} className="!font-serif !text-3xl text-charcoal">Triết lý của Linh</Title>
               <Text className="text-gray italic">Những giá trị tạo nên sự khác biệt</Text>
             </div>
             
@@ -105,20 +105,20 @@ const AboutPage: React.FC = () => {
               </Title>
               <Divider className="border-white/30 w-16 mx-auto my-6" />
               <Text className="uppercase tracking-[0.2em] text-[10px] font-bold text-white/90">
-                Lời từ đội ngũ Muse
+                Lời từ đội ngũ Linh
               </Text>
             </div>
           </div>
 
           {/* 5. KÊNH KẾT NỐI */}
           <div className="text-center mb-6">
-            <Title level={3} className="!font-serif mb-8 text-charcoal">Ghé thăm ngôi nhà của Muse</Title>
+            <Title level={3} className="!font-serif mb-8 text-charcoal">Ghé thăm ngôi nhà của Linh</Title>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button 
                 size="large" 
                 className="rounded-lg border-gray/30 text-charcoal hover:!text-primary hover:!border-primary h-12 px-8 flex items-center justify-center gap-2 bg-transparent"
               >
-                <Instagram size={18} /> @muse.cosmetics
+                <Instagram size={18} /> @Linh.cosmetics
               </Button>
               <Link to="/products" className="w-full sm:w-auto">
                 <Button 

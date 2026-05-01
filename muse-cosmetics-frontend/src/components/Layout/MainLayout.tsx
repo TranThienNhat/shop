@@ -117,7 +117,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <Title level={3} className="!mb-0 !text-charcoal font-serif tracking-tight">
-              Muse Cosmetics
+              Linh Cosmetics
             </Title>
           </Link>
 
@@ -193,7 +193,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             
             <div className="space-y-4">
               <Title level={3} className="!text-white !mb-0 font-serif tracking-tight">
-                Muse Cosmetics
+                Linh Cosmetics
               </Title>
               <p className="text-white/60 leading-relaxed text-sm pr-4">
                 Thương hiệu mỹ phẩm cao cấp, mang đến vẻ đẹp tự nhiên, thanh lịch và trải nghiệm chăm sóc bản thân hoàn hảo nhất.
@@ -229,7 +229,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 Liên hệ
               </Title>
               <div className="space-y-3 text-sm text-white/60">
-                <p className="flex items-center gap-2"><span className="text-white">Email:</span> hello@musecosmetics.vn</p>
+                <p className="flex items-center gap-2"><span className="text-white">Email:</span> hello@Linhcosmetics.vn</p>
                 <p className="flex items-center gap-2"><span className="text-white">Hotline:</span> 1900 1234</p>
                 <p className="leading-relaxed"><span className="text-white block mb-1">Cửa hàng chính:</span> 123 Đường Lụa, Phường Hoa, Quận Nàng Thơ, TP.HCM</p>
               </div>
@@ -238,7 +238,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </div>
 
           <div className="border-t border-white/10 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
-            <p>&copy; 2024 Muse Cosmetics. All rights reserved.</p>
+            <p>&copy; 2024 Linh Cosmetics. All rights reserved.</p>
             <div className="flex gap-6">
               <Link to="/privacy" className="hover:text-white transition-colors">Chính sách bảo mật</Link>
               <Link to="/terms" className="hover:text-white transition-colors">Điều khoản dịch vụ</Link>

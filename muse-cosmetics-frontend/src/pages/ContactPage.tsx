@@ -73,7 +73,7 @@ const ContactPage: React.FC = () => {
                   { 
                     icon: <Mail size={20} className="text-primary" />, 
                     title: "Email", 
-                    detail: "love@musecosmetics.vn" 
+                    detail: "love@Linhcosmetics.vn" 
                   },
                   { 
                     icon: <Clock size={20} className="text-primary" />, 

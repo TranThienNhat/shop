@@ -127,7 +127,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             {!collapsed && (
               <div>
                 <Title level={5} className="!mb-0 !text-charcoal">
-                  Muse Admin
+                  Linh Admin
                 </Title>
               </div>
             )}

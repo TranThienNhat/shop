@@ -142,7 +142,7 @@ const ProductDetailPage: React.FC = () => {
                   src={getImageUrl(selectedImage)}
                   alt={product.name}
                   className="w-full h-full object-cover rounded-xl transition-all duration-700 hover:scale-105"
-                  onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/600x800?text=Muse"; }}
+                  onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/600x800?text=Linh"; }}
                 />
               </div>
               <div className="flex gap-3 mt-4 overflow-x-auto pb-4 custom-scrollbar">
@@ -174,7 +174,7 @@ const ProductDetailPage: React.FC = () => {
                     <Text className="text-gray text-xs font-medium">({reviews.length} đánh giá)</Text>
                   </div>
                   <Divider type="vertical" className="bg-gray/20 h-4" />
-                  <Text className="text-gray text-xs uppercase tracking-widest">Mã SP: {selectedVariant?.sku || 'MUSE-001'}</Text>
+                  <Text className="text-gray text-xs uppercase tracking-widest">Mã SP: {selectedVariant?.sku || 'Linh-001'}</Text>
                 </div>
               </div>
 
@@ -300,7 +300,7 @@ const ProductDetailPage: React.FC = () => {
 
         {/* TABS CHI TIẾT & REVIEW */}
         <div className="mt-24">
-          <Tabs defaultActiveKey="1" size="large" centered className="muse-tabs">
+          <Tabs defaultActiveKey="1" size="large" centered className="Linh-tabs">
             <TabPane tab={<span className="px-6 font-serif text-lg">Mô tả sản phẩm</span>} key="1">
               <div className="bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-gray/10 leading-relaxed text-gray text-base max-w-4xl mx-auto">
                 <div dangerouslySetInnerHTML={{ __html: product.description || "Nội dung đang được cập nhật..." }} />

@@ -15,7 +15,7 @@ const HomePage: React.FC = () => {
 
   // 1. HARDCODE 5 ẢNH BANNER
   const showcaseImages = [
-    "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?q=80&w=2070&auto=format&fit=crop",
+    "D:\shop\muse-cosmetics-frontend\src\album\banner1.jpg",
     "https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=1974&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1612817288484-6f916006741a?q=80&w=2070&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?q=80&w=1976&auto=format&fit=crop",
@@ -100,7 +100,7 @@ const HomePage: React.FC = () => {
                               <div key={i} className="h-[450px]">
                                 <img 
                                   src={img} 
-                                  alt="Muse Showcase" 
+                                  alt="Linh Showcase" 
                                   className="w-full h-full object-cover scale-105"
                                 />
                               </div>
@@ -110,7 +110,7 @@ const HomePage: React.FC = () => {
                         {/* Decorative Tag */}
                         <div className="absolute bottom-10 -left-6 bg-white p-5 rounded-xl shadow-lg border border-gray/10">
                           <Text className="text-[10px] uppercase font-bold tracking-widest text-primary block mb-1">Authentic</Text>
-                          <Text className="font-serif italic text-charcoal">Muse Cosmetics ✨</Text>
+                          <Text className="font-serif italic text-charcoal">Linh Cosmetics ✨</Text>
                         </div>
                       </div>
                     </Col>
@@ -220,7 +220,7 @@ const HomePage: React.FC = () => {
           <div className="max-w-4xl mx-auto px-4 lg:px-8">
             <div className="bg-white p-10 md:p-16 rounded-2xl shadow-xl shadow-primary/5 border border-gray/10 text-center relative overflow-hidden">
               <div className="relative z-10">
-                <Title level={2} className="!text-charcoal !mb-4 !font-serif !text-3xl">Gia nhập cộng đồng Muse</Title>
+                <Title level={2} className="!text-charcoal !mb-4 !font-serif !text-3xl">Gia nhập cộng đồng Linh</Title>
                 <Paragraph className="text-base text-gray mb-8 font-serif italic max-w-lg mx-auto leading-relaxed">
                   Đăng ký ngay để nhận thông báo về bộ sưu tập mới và các ưu đãi bí mật dành riêng cho bạn.
                 </Paragraph>

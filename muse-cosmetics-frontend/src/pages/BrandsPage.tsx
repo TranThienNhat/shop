@@ -49,14 +49,14 @@ const BrandsPage: React.FC = () => {
         {/* Header Section */}
         <div className="text-center mb-16">
           <Text className="text-primary uppercase tracking-[0.2em] font-bold text-xs mb-3 block">
-            Muse Partners
+            Linh Partners
           </Text>
           <Title level={2} className="!font-serif !text-4xl md:!text-5xl !text-charcoal !mb-6">
             Những người bạn đồng hành
           </Title>
           <div className="w-12 h-1 bg-primary/30 mx-auto rounded-full mb-6"></div>
           <Paragraph className="text-gray italic font-serif text-base md:text-lg max-w-xl mx-auto leading-relaxed">
-            "Tại Muse, chúng tôi chỉ hợp tác với những thương hiệu trân quý vẻ đẹp tự nhiên và sự an lành của làn da bạn."
+            "Tại Linh, chúng tôi chỉ hợp tác với những thương hiệu trân quý vẻ đẹp tự nhiên và sự an lành của làn da bạn."
           </Paragraph>
         </div>
 
@@ -112,7 +112,7 @@ const BrandsPage: React.FC = () => {
               size="large" 
               className="rounded-lg border-charcoal text-charcoal px-10 h-12 font-medium hover:!border-primary hover:!text-primary transition-colors bg-transparent"
             >
-              Gửi yêu cầu cho Muse
+              Gửi yêu cầu cho Linh
             </Button>
           </Link>
         </div>

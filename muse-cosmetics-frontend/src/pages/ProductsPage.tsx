@@ -108,7 +108,7 @@ const ProductsPage: React.FC = () => {
         />
         
         <div className="mb-12 text-center md:text-left">
-          <Title level={1} className="!text-charcoal !mb-3 !font-serif !text-4xl tracking-tight">Bộ sưu tập Muse</Title>
+          <Title level={1} className="!text-charcoal !mb-3 !font-serif !text-4xl tracking-tight">Bộ sưu tập Linh</Title>
           <Text className="text-gray italic font-serif text-base">Khám phá những sản phẩm làm đẹp cao cấp được tuyển chọn kỹ lưỡng.</Text>
         </div>
 
@@ -142,7 +142,7 @@ const ProductsPage: React.FC = () => {
                 <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-widest text-gray">Thương hiệu</label>
                 <Select 
                   placeholder="Tất cả thương hiệu" 
-                  className="w-full muse-select" 
+                  className="w-full Linh-select" 
                   value={searchParams.get("brand_id") ? Number(searchParams.get("brand_id")) : undefined}
                   onChange={(val) => handleFilterChange("brand_id", val)}
                   allowClear
@@ -156,7 +156,7 @@ const ProductsPage: React.FC = () => {
                 <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-widest text-gray">Danh mục</label>
                 <Select 
                   placeholder="Chọn danh mục" 
-                  className="w-full muse-select" 
+                  className="w-full Linh-select" 
                   value={searchParams.get("category_id") ? Number(searchParams.get("category_id")) : undefined}
                   onChange={(val) => handleFilterChange("category_id", val)}
                   allowClear
@@ -233,7 +233,7 @@ const ProductsPage: React.FC = () => {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     showSizeChanger={false}
-                    className="muse-pagination"
+                    className="Linh-pagination"
                   />
                 </div>
               </>

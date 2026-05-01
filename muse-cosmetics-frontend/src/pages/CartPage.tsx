@@ -78,7 +78,7 @@ const CartPage: React.FC = () => {
         {/* HEADER */}
         <div className="mb-10 border-b border-gray/10 pb-6">
           <Title level={2} className="!font-serif !text-charcoal !mb-2">Giỏ hàng của bạn</Title>
-          <Text className="text-gray uppercase tracking-widest text-xs">Muse Cosmetics / Shopping Cart</Text>
+          <Text className="text-gray uppercase tracking-widest text-xs">Linh Cosmetics / Shopping Cart</Text>
         </div>
 
         <Row gutter={[32, 32]}>
@@ -98,7 +98,7 @@ const CartPage: React.FC = () => {
                         src={getImageUrl(item.image_url || "")}
                         alt={item.name}
                         className="w-full h-full object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/200x200?text=Muse"; }}
+                        onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/200x200?text=Linh"; }}
                       />
                     </div>
 
