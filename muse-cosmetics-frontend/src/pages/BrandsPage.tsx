@@ -64,7 +64,12 @@ const BrandsPage: React.FC = () => {
         <Row gutter={[24, 32]}>
           {brands.map((brand) => (
             <Col xs={24} sm={12} md={8} lg={6} key={brand.id}>
-              <Link to={`/products?brand_id=${brand.id}`} className="block h-full">
+              {/* QUAN TRỌNG: Truyền state fromBrandPage để ProductsPage hiển thị Description */}
+              <Link 
+                to={`/products?brand_id=${brand.id}`} 
+                state={{ fromBrandPage: true }} 
+                className="block h-full"
+              >
                 <Card
                   hoverable
                   className="border border-gray/10 shadow-sm h-full rounded-2xl overflow-hidden group bg-white transition-all duration-300 hover:shadow-lg hover:-translate-y-1"

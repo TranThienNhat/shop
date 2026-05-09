@@ -1,30 +1,35 @@
 import React, { useEffect, useState } from "react";
-import { Row, Col, Card, Button, Typography, Spin, Pagination, Slider, Select, Input, Empty, Breadcrumb } from "antd";
-import { Link, useSearchParams } from "react-router-dom";
+import { Row, Col, Card, Button, Typography, Spin, Pagination, Select, Input, Empty, Breadcrumb } from "antd";
+import { Link, useSearchParams, useLocation } from "react-router-dom";
 import { Search, Filter, RefreshCcw, ChevronRight } from "lucide-react";
 import api from "../utils/api";
 import { getImageUrl, formatCurrency } from "../utils/helpers";
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 const { Meta } = Card;
 const { Option } = Select;
 
 const ProductsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  
+  // State dữ liệu
   const [products, setProducts] = useState<any[]>([]); 
   const [categories, setCategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
 
-  // Filter States
+  // State bộ lọc
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(12);
-  
-  // State hiển thị UI khi đang kéo chuột
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000000]);
-  // State CHÍNH THỨC dùng để gọi API (khi đã thả chuột)
-  const [appliedPriceRange, setAppliedPriceRange] = useState<[number, number]>([0, 5000000]);
+  const [appliedPriceRange] = useState<[number, number]>([0, 10000000]);
+
+  // Kiểm tra điều kiện hiển thị thông tin thương hiệu
+  // Phải có state 'fromBrandPage' truyền từ BrandsPage và có brand_id trên URL
+  const selectedBrandId = searchParams.get("brand_id");
+  const shouldShowBrandInfo = location.state?.fromBrandPage && selectedBrandId;
+  const currentBrand = brands.find(b => b.id === Number(selectedBrandId));
 
   // 1. Khởi tạo dữ liệu (Danh mục & Thương hiệu)
   useEffect(() => {
@@ -46,11 +51,9 @@ const ProductsPage: React.FC = () => {
   // 2. Lắng nghe thay đổi từ URL và gọi API lấy sản phẩm
   useEffect(() => {
     loadProducts();
-    
-    // Đồng bộ Page hiện tại với URL
     const page = searchParams.get("page");
     if (page) setCurrentPage(Number(page));
-  }, [searchParams, appliedPriceRange]); // SỬ DỤNG appliedPriceRange THAY VÌ priceRange
+  }, [searchParams]);
 
   const loadProducts = async () => {
     try {
@@ -58,8 +61,8 @@ const ProductsPage: React.FC = () => {
       const params: any = {
         page: searchParams.get("page") || 1,
         limit: pageSize,
-        min_price: appliedPriceRange[0], // Lấy giá từ state đã xác nhận
-        max_price: appliedPriceRange[1], // Lấy giá từ state đã xác nhận
+        min_price: appliedPriceRange[0],
+        max_price: appliedPriceRange[1],
         search: searchParams.get("search") || undefined,
         category_id: searchParams.get("category_id") || undefined,
         brand_id: searchParams.get("brand_id") || undefined,
@@ -75,7 +78,7 @@ const ProductsPage: React.FC = () => {
     }
   };
 
-  // 3. Hàm xử lý thay đổi bộ lọc (Cập nhật URL)
+  // 3. Hàm xử lý thay đổi bộ lọc
   const handleFilterChange = (key: string, value: any) => {
     const newParams = new URLSearchParams(searchParams);
     if (value) {
@@ -83,13 +86,11 @@ const ProductsPage: React.FC = () => {
     } else {
       newParams.delete(key);
     }
-    newParams.set("page", "1"); // Luôn reset về trang 1 khi lọc
+    newParams.set("page", "1");
     setSearchParams(newParams);
   };
 
   const clearFilters = () => {
-    setPriceRange([0, 5000000]);
-    setAppliedPriceRange([0, 5000000]); // Reset cả state gọi API
     setSearchParams({});
     setCurrentPage(1);
   };
@@ -98,18 +99,39 @@ const ProductsPage: React.FC = () => {
     <div className="bg-background min-h-screen pb-20">
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-10">
         
-        {/* Breadcrumb & Header */}
+        {/* Breadcrumb */}
         <Breadcrumb 
           className="mb-6 uppercase tracking-widest text-[10px] text-gray" 
           items={[
             { title: <Link to="/" className="hover:text-primary transition-colors">Trang chủ</Link> }, 
-            { title: "Cửa hàng" }
-          ]} 
+            { title: shouldShowBrandInfo && currentBrand ? <Link to="/brands" className="hover:text-primary transition-colors">Thương hiệu</Link> : "Cửa hàng" },
+            shouldShowBrandInfo && currentBrand ? { title: currentBrand.name } : null
+          ].filter(Boolean) as any} 
         />
         
-        <div className="mb-12 text-center md:text-left">
-          <Title level={1} className="!text-charcoal !mb-3 !font-serif !text-4xl tracking-tight">Bộ sưu tập Linh</Title>
-          <Text className="text-gray italic font-serif text-base">Khám phá những sản phẩm làm đẹp cao cấp được tuyển chọn kỹ lưỡng.</Text>
+        {/* Header Section: Hiển thị linh hoạt */}
+        <div className="mb-12">
+          {shouldShowBrandInfo && currentBrand ? (
+            <div className="bg-white p-8 md:p-12 rounded-3xl border border-primary/10 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10"></div>
+              <div className="relative z-10">
+                <Text className="text-primary uppercase tracking-[0.2em] font-bold text-xs mb-3 block">Chuyên mục thương hiệu</Text>
+                <Title level={1} className="!text-charcoal !mb-6 !font-serif !text-4xl md:!text-5xl tracking-tight">
+                  {currentBrand.name}
+                </Title>
+                {currentBrand.description && (
+                  <Paragraph className="text-gray italic font-serif text-lg md:text-xl max-w-3xl leading-relaxed border-l-2 border-primary/20 pl-6">
+                    {currentBrand.description}
+                  </Paragraph>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center md:text-left">
+              <Title level={1} className="!text-charcoal !mb-3 !font-serif !text-4xl tracking-tight">Bộ sưu tập Linh</Title>
+              <Text className="text-gray italic font-serif text-base">Khám phá những sản phẩm làm đẹp cao cấp được tuyển chọn kỹ lưỡng.</Text>
+            </div>
+          )}
         </div>
 
         <Row gutter={[32, 32]}>
@@ -138,25 +160,27 @@ const ProductsPage: React.FC = () => {
               </div>
 
               {/* Lọc theo Thương hiệu */}
-              <div>
-                <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-widest text-gray">Thương hiệu</label>
-                <Select 
-                  placeholder="Tất cả thương hiệu" 
-                  className="w-full Linh-select" 
-                  value={searchParams.get("brand_id") ? Number(searchParams.get("brand_id")) : undefined}
-                  onChange={(val) => handleFilterChange("brand_id", val)}
-                  allowClear
-                >
-                  {brands.map((b) => <Option key={b.id} value={b.id}>{b.name}</Option>)}
-                </Select>
-              </div>
+              {!shouldShowBrandInfo && (
+                <div>
+                  <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-widest text-gray">Thương hiệu</label>
+                  <Select 
+                    placeholder="Tất cả thương hiệu" 
+                    className="w-full" 
+                    value={searchParams.get("brand_id") ? Number(searchParams.get("brand_id")) : undefined}
+                    onChange={(val) => handleFilterChange("brand_id", val)}
+                    allowClear
+                  >
+                    {brands.map((b) => <Option key={b.id} value={b.id}>{b.name}</Option>)}
+                  </Select>
+                </div>
+              )}
 
               {/* Lọc theo Danh mục */}
               <div>
                 <label className="block text-charcoal font-bold mb-3 text-[10px] uppercase tracking-widest text-gray">Danh mục</label>
                 <Select 
                   placeholder="Chọn danh mục" 
-                  className="w-full Linh-select" 
+                  className="w-full" 
                   value={searchParams.get("category_id") ? Number(searchParams.get("category_id")) : undefined}
                   onChange={(val) => handleFilterChange("category_id", val)}
                   allowClear
@@ -221,7 +245,6 @@ const ProductsPage: React.FC = () => {
                   ))}
                 </Row>
 
-                {/* Phân trang */}
                 <div className="flex justify-center mt-16">
                   <Pagination
                     current={currentPage}
@@ -233,14 +256,13 @@ const ProductsPage: React.FC = () => {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     showSizeChanger={false}
-                    className="Linh-pagination"
                   />
                 </div>
               </>
             ) : (
               <Card className="text-center py-24 border border-gray/10 shadow-sm rounded-2xl bg-white">
                 <Empty 
-                  description={<Text className="text-gray italic font-serif text-base">Không tìm thấy sản phẩm phù hợp với bộ lọc hiện tại.</Text>} 
+                  description={<Text className="text-gray italic font-serif text-base">Không tìm thấy sản phẩm phù hợp.</Text>} 
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                 />
                 <Button 
