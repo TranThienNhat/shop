@@ -2,28 +2,8 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-/* 1. RESET & BASE STYLES */
+/* Custom CSS for better styling */
 @layer base {
-  /* Đảm bảo toàn bộ khung bao ngoài luôn chạy từ trên xuống */
-  html, 
-  body, 
-  #root {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column !important; /* Ép buộc hướng cột xuôi */
-    justify-content: flex-start !important; /* Luôn bắt đầu từ đỉnh */
-  }
-
-  body {
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background-color: #fdfbf7;
-    color: #2d2d2d;
-    line-height: 1.6;
-    overflow-x: hidden;
-  }
-
   * {
     box-sizing: border-box;
   }
@@ -31,41 +11,18 @@
   html {
     scroll-behavior: smooth;
   }
+
+  body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      sans-serif;
+    background-color: #fdfbf7;
+    color: #2d2d2d;
+    line-height: 1.6;
+  }
 }
 
-/* 2. ANT DESIGN LAYOUT FIXES */
-/* Sửa lỗi Layout của Ant Design bị nhảy hoặc ngược */
-.ant-layout {
-  display: flex !important;
-  flex-direction: column !important;
-  min-height: 100vh !important;
-  background: #fdfbf7 !important;
-}
-
-.ant-layout-header {
-  background: rgba(253, 251, 247, 0.8) !important;
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 0 !important; /* Để MainLayout tự kiểm soát padding */
-  height: 80px !important;
-  line-height: 80px !important;
-}
-
-.ant-layout-content {
-  flex: 1 0 auto !important; /* Cho phép nội dung giãn ra để đẩy footer xuống dưới cùng */
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: flex-start !important; /* Bắt đầu từ trên cùng */
-  width: 100%;
-}
-
-.ant-layout-footer {
-  flex-shrink: 0; /* Không cho phép footer bị co lại */
-}
-
-/* 3. CUSTOM COMPONENTS & UTILITIES */
 @layer components {
-  /* Line clamp cho tên sản phẩm */
+  /* Line clamp utilities */
   .line-clamp-1 {
     display: -webkit-box;
     -webkit-line-clamp: 1;
@@ -80,19 +37,45 @@
     overflow: hidden;
   }
 
-  /* Hiệu ứng mờ cho Header */
-  .glass-header {
-    background: rgba(253, 251, 247, 0.8);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }
 
-/* 4. ANT DESIGN THEME OVERRIDES (Sử dụng màu Brand #bc8f8f) */
+@layer utilities {
+  /* Custom scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Ant Design customizations */
+.ant-layout {
+  background: #fdfbf7 !important;
+}
+
+.ant-layout-header {
+  background: rgba(253, 251, 247, 0.8) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
 .ant-menu-horizontal {
   background: transparent !important;
   border-bottom: none !important;
+}
+
+.ant-menu-horizontal > .ant-menu-item:hover,
+.ant-menu-horizontal > .ant-menu-submenu:hover {
+  color: #bc8f8f !important;
 }
 
 .ant-menu-horizontal > .ant-menu-item-selected {
@@ -100,24 +83,65 @@
   border-bottom-color: #bc8f8f !important;
 }
 
+.ant-card {
+  border-radius: 8px !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03),
+    0 1px 6px -1px rgba(0, 0, 0, 0.02) !important;
+}
+
+.ant-card-hoverable:hover {
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.05), 0 2px 4px 0 rgba(0, 0, 0, 0.02) !important;
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
 .ant-btn-primary {
   background-color: #bc8f8f !important;
   border-color: #bc8f8f !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  box-shadow: none !important;
 }
 
 .ant-btn-primary:hover {
-  background-color: #a67b7b !important;
-  border-color: #a67b7b !important;
+  background-color: rgba(188, 143, 143, 0.9) !important;
+  border-color: rgba(188, 143, 143, 0.9) !important;
 }
 
-/* 5. ANIMATIONS */
+.ant-input:focus,
+.ant-input-focused {
+  border-color: #bc8f8f !important;
+  box-shadow: 0 0 0 2px rgba(188, 143, 143, 0.1) !important;
+}
+
+.ant-form-item-label
+  > label.ant-form-item-required:not(
+    .ant-form-item-required-mark-optional
+  )::before {
+  color: #bc8f8f !important;
+}
+
+/* Custom glassmorphism effect for header */
+.glass-header {
+  background: rgba(253, 251, 247, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Smooth transitions */
+.transition-all {
+  transition: all 0.3s ease;
+}
+
+/* Custom aspect ratio for product images */
+.aspect-square {
+  aspect-ratio: 1 / 1;
+}
+
+/* Loading animation */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -126,40 +150,16 @@
 }
 
 .fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+  animation: fadeIn 0.5s ease-out;
 }
 
-@keyframes bounce-slow {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-.animate-bounce-slow {
-  animation: bounce-slow 3s infinite ease-in-out;
-}
-
-/* 6. RESPONSIVE CUSTOMS */
+/* Responsive text sizes */
 @media (max-width: 640px) {
-  .ant-layout-header {
-    height: 64px !important;
-    line-height: 64px !important;
+  .ant-typography h1 {
+    font-size: 1.875rem !important;
   }
-}
 
-/* 7. SCROLLBAR */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #bc8f8f;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a67b7b;
+  .ant-typography h2 {
+    font-size: 1.5rem !important;
+  }
 }
