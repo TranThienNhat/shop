@@ -64,16 +64,6 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ visible, onClose }) => {
             </div>
             <Space direction="vertical" className="w-full" size="middle">
               <Button 
-                type="primary" 
-                block 
-                size="large" 
-                className="bg-primary h-12 rounded-lg flex items-center justify-center gap-2 font-bold"
-                onClick={() => { onClose(); navigate("/checkout"); }}
-                loading={isLoading}
-              >
-                THANH TOÁN NGAY <ArrowRight size={18} />
-              </Button>
-              <Button 
                 block 
                 size="large" 
                 className="h-12 border-gray-300 rounded-lg hover:text-primary hover:border-primary"
