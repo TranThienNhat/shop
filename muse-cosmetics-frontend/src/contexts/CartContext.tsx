@@ -24,7 +24,8 @@ interface CartContextType {
   removeFromCart: (variantId: number) => Promise<void>;
   applyCoupon: (couponCode: string) => Promise<void>;
   removeCoupon: () => Promise<void>;
-  clearCart: () => Promise<void>;
+  // Cập nhật: Chấp nhận tham số optional để xóa từng phần hoặc xóa hết
+  clearCart: (variantIds?: number[]) => Promise<void>;
   refreshCart: () => Promise<void>;
 }
 
@@ -50,7 +51,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  // Tính toán số lượng và tổng tiền cuối cùng
+  // Tính toán số lượng và tổng tiền cuối cùng dựa trên state từ backend
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = subtotal - discount;
 
@@ -98,7 +99,6 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         setIsLoading(true);
         await api.post("/cart/add", { variantId, quantity });
         await refreshCart();
-        // Thông báo sẽ được hiện ở Page/Drawer tùy nhu cầu, hoặc để mặc định ở đây
       } catch (error: any) {
         message.error(error.response?.data?.message || "Không thể thêm vào giỏ");
       } finally {
@@ -108,7 +108,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     [refreshCart, isAuthenticated]
   );
 
-  // 3. Cập nhật số lượng (Dùng variantId làm key theo Backend)
+  // 3. Cập nhật số lượng
   const updateQuantity = useCallback(
     async (variantId: number, quantity: number) => {
       if (!isAuthenticated) return;
@@ -126,7 +126,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     [refreshCart, isAuthenticated]
   );
 
-  // 4. Xóa sản phẩm khỏi giỏ (Dùng variantId)
+  // 4. Xóa sản phẩm khỏi giỏ
   const removeFromCart = useCallback(
     async (variantId: number) => {
       if (!isAuthenticated) return;
@@ -145,24 +145,24 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     [refreshCart, isAuthenticated]
   );
 
-  // 5. Áp dụng mã giảm giá (MỚI BỔ SUNG)
+  // 5. Áp dụng mã giảm giá
   const applyCoupon = useCallback(async (couponCode: string) => {
     try {
       setIsLoading(true);
       const response = await api.post("/cart/coupon/apply", { couponCode });
       if (response.data.success) {
-        await refreshCart(); // Refresh để nhận subtotal/discount mới từ Backend
+        await refreshCart();
         message.success("Áp dụng mã thành công! ✨");
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || "Mã giảm giá không hợp lệ");
-      throw error; // Ném lỗi để CartPage xử lý nếu cần
+      throw error;
     } finally {
       setIsLoading(false);
     }
   }, [refreshCart]);
 
-  // 6. Hủy mã giảm giá (MỚI BỔ SUNG)
+  // 6. Hủy mã giảm giá
   const removeCoupon = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -176,22 +176,35 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   }, [refreshCart]);
 
-  // 7. Xóa sạch giỏ hàng
-  const clearCart = useCallback(async () => {
+  /**
+   * 7. Làm sạch giỏ hàng (CẬP NHẬT MỚI)
+   * @param variantIds - Nếu có, chỉ xóa các ID này. Nếu không, xóa hết.
+   */
+  const clearCart = useCallback(async (variantIds?: number[]) => {
     if (!isAuthenticated) return;
+    
     try {
       setIsLoading(true);
-      await api.delete("/cart/clear");
-      setItems([]);
-      setSubtotal(0);
-      setDiscount(0);
-      setCouponCode(null);
+      
+      if (variantIds && variantIds.length > 0) {
+        // Trường hợp 1: Xóa các sản phẩm đã chọn sau khi thanh toán
+        // Nếu Backend của bạn sau khi Order thành công đã tự xóa giỏ, 
+        // thì ở đây chỉ cần gọi refreshCart() là đủ.
+        await refreshCart();
+      } else {
+        // Trường hợp 2: Người dùng nhấn nút "Xóa hết giỏ hàng"
+        await api.delete("/cart/clear");
+        setItems([]);
+        setSubtotal(0);
+        setDiscount(0);
+        setCouponCode(null);
+      }
     } catch (error) {
-      message.error("Lỗi khi làm trống giỏ hàng");
+      console.error("Lỗi khi dọn dẹp giỏ hàng:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshCart]);
 
   const value: CartContextType = {
     items,
