@@ -6,6 +6,7 @@ import {
   Typography,
   Dropdown,
   Space,
+  Badge,
   Tooltip,
   Breadcrumb,
 } from "antd";
@@ -20,6 +21,7 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  BellOutlined,
   HomeOutlined,
   GiftOutlined,
 } from "@ant-design/icons";
@@ -38,50 +40,96 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
 
   const menuItems = [
-    { key: "/admin", icon: <DashboardOutlined />, label: <Link to="/admin">Dashboard</Link> },
-    { key: "/admin/products", icon: <ShoppingOutlined />, label: <Link to="/admin/products">Sản phẩm</Link> },
-    { key: "/admin/categories", icon: <TagsOutlined />, label: <Link to="/admin/categories">Danh mục</Link> },
-    { key: "/admin/brands", icon: <BranchesOutlined />, label: <Link to="/admin/brands">Thương hiệu</Link> },
-    { key: "/admin/coupons", icon: <GiftOutlined />, label: <Link to="/admin/coupons">Mã giảm giá</Link> },
-    { key: "/admin/orders", icon: <ShoppingCartOutlined />, label: <Link to="/admin/orders">Đơn hàng</Link> },
-    { key: "/admin/users", icon: <UserOutlined />, label: <Link to="/admin/users">Người dùng</Link> },
+    {
+      key: "/admin",
+      icon: <DashboardOutlined />,
+      label: <Link to="/admin">Dashboard</Link>,
+    },
+    {
+      key: "/admin/products",
+      icon: <ShoppingOutlined />,
+      label: <Link to="/admin/products">Sản phẩm</Link>,
+    },
+    {
+      key: "/admin/categories",
+      icon: <TagsOutlined />,
+      label: <Link to="/admin/categories">Danh mục</Link>,
+    },
+    {
+      key: "/admin/brands",
+      icon: <BranchesOutlined />,
+      label: <Link to="/admin/brands">Thương hiệu</Link>,
+    },
+    {
+      key: "/admin/coupons",
+      icon: <GiftOutlined />,
+      label: <Link to="/admin/coupons">Mã giảm giá</Link>,
+    },
+    {
+      key: "/admin/orders",
+      icon: <ShoppingCartOutlined />,
+      label: <Link to="/admin/orders">Đơn hàng</Link>,
+    },
+    {
+      key: "/admin/users",
+      icon: <UserOutlined />,
+      label: <Link to="/admin/users">Người dùng</Link>,
+    },
   ];
 
   const userMenuItems = [
-    { key: "profile", label: "Thông tin cá nhân", icon: <UserOutlined /> },
+    {
+      key: "profile",
+      label: "Thông tin cá nhân",
+      icon: <UserOutlined />,
+    },
     {
       key: "user-site",
-      label: <Link to="/" className="flex items-center gap-2"><HomeOutlined /> Về trang người dùng</Link>,
+      label: (
+        <Link to="/" className="flex items-center gap-2">
+          <HomeOutlined />
+          Về trang người dùng
+        </Link>
+      ),
     },
-    { type: "divider" as const },
-    { key: "logout", label: "Đăng xuất", icon: <LogoutOutlined />, onClick: logout },
+    {
+      type: "divider" as const,
+    },
+    {
+      key: "logout",
+      label: "Đăng xuất",
+      icon: <LogoutOutlined />,
+      onClick: logout,
+    },
   ];
 
   return (
     <Layout className="min-h-screen">
-      {/* SIDER */}
       <Sider
         trigger={null}
         collapsible
         collapsed={collapsed}
-        className="bg-white shadow-lg z-[100]"
+        className="bg-white shadow-lg"
         width={250}
         style={{
+          overflow: "auto",
           height: "100vh",
           position: "fixed",
           left: 0,
           top: 0,
-        }}
-      >
-        <div className="p-4 border-b border-gray-100 flex justify-center items-center h-20">
+          bottom: 0,
+        }}>
+        <div className="p-4 border-b border-gray-200">
           <Link to="/admin" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-rose-400 rounded-lg flex items-center justify-center shrink-0">
-              <span className="text-white font-bold text-sm">L</span>
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">M</span>
             </div>
             {!collapsed && (
-              <Title level={5} className="!mb-0 !text-slate-800 whitespace-nowrap">
-                Linh Admin
-              </Title>
+              <div>
+                <Title level={5} className="!mb-0 !text-charcoal">
+                  Linh Admin
+                </Title>
+              </div>
             )}
           </Link>
         </div>
@@ -90,77 +138,87 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
-          className="border-none mt-2"
+          className="border-none"
+          style={{ height: "calc(100vh - 80px)", borderRight: 0 }}
         />
       </Sider>
 
-      {/* MAIN SECTION */}
       <Layout
         style={{
           marginLeft: collapsed ? 80 : 250,
           transition: "margin-left 0.2s",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-start", // Quan trọng: Luôn bắt đầu từ đỉnh
-        }}
-      >
+        }}>
         <Header
-          className="bg-white shadow-sm px-6 flex items-center justify-between"
+          className="bg-white shadow-sm px-4 flex items-center justify-between"
           style={{
             position: "fixed",
-            zIndex: 99,
+            zIndex: 1,
             width: `calc(100% - ${collapsed ? 80 : 250}px)`,
-            height: 64,
             transition: "width 0.2s",
-          }}
-        >
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            className="text-lg"
-          />
+          }}>
+          <div className="flex items-center gap-4">
+            <Button
+              type="text"
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={() => setCollapsed(!collapsed)}
+              className="text-charcoal hover:text-primary"
+            />
+          </div>
 
           <Space size="middle">
-            <Tooltip title="Về trang chủ">
+            <Tooltip title="Về trang người dùng">
               <Link to="/">
-                <Button type="text" icon={<HomeOutlined />} />
+                <Button
+                  type="text"
+                  icon={<HomeOutlined />}
+                  className="text-charcoal hover:text-primary"
+                />
               </Link>
             </Tooltip>
-            <Dropdown menu={{ items: userMenuItems }} trigger={["click"]}>
-              <Button type="text" className="flex items-center gap-2">
+            <Dropdown
+              menu={{ items: userMenuItems }}
+              placement="bottomRight"
+              trigger={["click"]}>
+              <Button
+                type="text"
+                className="text-charcoal hover:text-primary flex items-center gap-2">
                 <UserOutlined />
-                <span className="font-medium">{user?.name}</span>
+                <span>{user?.name}</span>
               </Button>
             </Dropdown>
           </Space>
         </Header>
 
-        {/* CONTENT AREA */}
         <Content
-          className="p-6 bg-slate-50"
-          style={{ 
-            marginTop: 64, // Khớp với chiều cao Header
-            minHeight: "calc(100vh - 64px)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-start" // Đảm bảo nội dung con không bị đẩy xuống dưới
-          }}
-        >
-          <Breadcrumb className="mb-6">
-            <Breadcrumb.Item><HomeOutlined /></Breadcrumb.Item>
-            <Breadcrumb.Item>Admin</Breadcrumb.Item>
-            {location.pathname !== "/admin" && (
-              <Breadcrumb.Item className="capitalize">
-                {location.pathname.split("/").pop()}
+          className="p-6 bg-gray-50"
+          style={{ marginTop: 64, minHeight: "calc(100vh - 64px)" }}>
+          <div className="mb-4">
+            <Breadcrumb>
+              <Breadcrumb.Item>
+                <Link to="/" className="text-gray-500 hover:text-primary">
+                  <HomeOutlined className="mr-1" />
+                  Trang chủ
+                </Link>
               </Breadcrumb.Item>
-            )}
-          </Breadcrumb>
-
-          {/* Wrapper cho children để tránh lỗi flex của Content */}
-          <div className="w-full h-full flex flex-col justify-start">
-            {children}
+              <Breadcrumb.Item>
+                <Link to="/admin" className="text-gray-500 hover:text-primary">
+                  Admin Panel
+                </Link>
+              </Breadcrumb.Item>
+              {location.pathname !== "/admin" && (
+                <Breadcrumb.Item className="text-charcoal">
+                  {location.pathname.includes("/products") && "Sản phẩm"}
+                  {location.pathname.includes("/categories") && "Danh mục"}
+                  {location.pathname.includes("/brands") && "Thương hiệu"}
+                  {location.pathname.includes("/coupons") && "Mã giảm giá"}
+                  {location.pathname.includes("/orders") && "Đơn hàng"}
+                  {location.pathname.includes("/users") && "Người dùng"}
+                  {location.pathname.includes("/reports") && "Báo cáo"}
+                </Breadcrumb.Item>
+              )}
+            </Breadcrumb>
           </div>
+          {children}
         </Content>
       </Layout>
     </Layout>
