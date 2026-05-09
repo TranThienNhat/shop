@@ -182,7 +182,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       </Header>
 
       {/* CONTENT */}
-      <Content className="flex-1 flex flex-col">{children}</Content>
+      <Content className="flex-1 w-full flex flex-col justify-start">
+        {children}
+      </Content>
 
       {/* FOOTER */}
       <Footer className="bg-charcoal text-white/80 py-16 border-t border-gray/10">
