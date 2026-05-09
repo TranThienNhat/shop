@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Card, Typography, Spin, Empty, Button, Modal, Divider, Row, Col, Rate, Input, message, Popconfirm } from "antd";
 import { Link, Navigate } from "react-router-dom";
-import { ShoppingBag, ChevronRight, Clock, MapPin, Phone, Package, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
+import { 
+  ShoppingBag, ChevronRight, Clock, MapPin, Phone, 
+  Package, CreditCard, CheckCircle, AlertCircle, Copy 
+} from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../utils/api";
 import { getImageUrl, formatCurrency } from "../utils/helpers";
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const OrdersPage: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -42,13 +45,47 @@ const OrdersPage: React.FC = () => {
     }
   };
 
+  /**
+   * Hàm sao chép mã đơn hàng tối ưu
+   * Hoạt động trên cả HTTP, HTTPS và Mobile
+   */
+  const handleCopyCode = async (code: string) => {
+    try {
+      // 1. Thử dùng Clipboard API hiện đại
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        // 2. Fallback cho môi trường không bảo mật (HTTP) hoặc trình duyệt cũ
+        const textArea = document.createElement("textarea");
+        textArea.value = code;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      
+      // Hiển thị thông báo thành công
+      message.success({
+        content: `Đã sao chép: ${code}`,
+        icon: <CheckCircle size={16} className="text-green-500" />,
+        duration: 2,
+      });
+    } catch (err) {
+      message.error("Không thể sao chép mã.");
+      console.error("Copy error:", err);
+    }
+  };
+
   const handleCancelOrder = async (orderId: number) => {
     try {
       setSubmitting(true);
       await api.put(`/orders/${orderId}`, { status: "cancelled" });
       message.success("Đã hủy đơn hàng thành công.");
       
-      // Cập nhật state tại chỗ để UI thay đổi ngay lập tức
       const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: "cancelled" } : o);
       setOrders(updatedOrders);
       if (selectedOrder?.id === orderId) {
@@ -123,7 +160,6 @@ const OrdersPage: React.FC = () => {
     <div className="min-h-screen bg-background py-12">
       <div className="max-w-4xl mx-auto px-4 lg:px-8">
         
-        {/* Header */}
         <div className="text-center mb-12">
           <Title level={2} className="!font-serif !text-charcoal !mb-2">Đơn hàng của bạn</Title>
           <div className="w-12 h-1 bg-primary/30 mx-auto mb-4 rounded-full"></div>
@@ -155,8 +191,19 @@ const OrdersPage: React.FC = () => {
                         <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
                             <ShoppingBag size={20} />
                         </div>
-                        <div>
-                            <Text strong className="block text-charcoal text-base">{order.order_code}</Text>
+                        <div className="flex flex-col">
+                            <div 
+                              className="flex items-center gap-2 group/copy cursor-pointer w-fit" 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                handleCopyCode(order.order_code); 
+                              }}
+                            >
+                                <Text strong className="block text-charcoal text-base group-hover/copy:text-primary transition-colors">
+                                    {order.order_code}
+                                </Text>
+                                <Copy size={14} className="text-gray/40 group-hover/copy:text-primary opacity-0 group-hover/copy:opacity-100 transition-all" />
+                            </div>
                             <Text className="text-xs text-gray flex items-center gap-1 mt-1">
                                 <Clock size={14} /> {new Date(order.created_at).toLocaleDateString("vi-VN")}
                             </Text>
@@ -187,23 +234,19 @@ const OrdersPage: React.FC = () => {
                           Xem chi tiết <ChevronRight size={16} />
                       </Button>
 
-                      {/* NÚT HỦY ĐƠN Ở BÊN NGOÀI DANH SÁCH */}
                       {(order.status === "pending" || order.status === "processing") && (
                           <Popconfirm
                               title="Xác nhận hủy đơn hàng này?"
-                              description="Bạn có chắc chắn muốn hủy đơn hàng này không?"
                               onConfirm={(e) => { e?.stopPropagation(); handleCancelOrder(order.id); }}
                               onCancel={(e) => e?.stopPropagation()}
                               okText="Hủy đơn"
                               cancelText="Đóng"
-                              okButtonProps={{ danger: true, loading: submitting, className: "rounded-md" }}
-                              cancelButtonProps={{ className: "rounded-md" }}
-                              placement="topLeft"
+                              okButtonProps={{ danger: true, loading: submitting }}
                           >
                               <Button 
                                 type="text" 
                                 danger 
-                                className="text-sm font-medium p-0 flex items-center hover:bg-transparent" 
+                                className="text-sm font-medium p-0" 
                                 onClick={(e) => e.stopPropagation()}
                               >
                                   Hủy đơn
@@ -241,7 +284,15 @@ const OrdersPage: React.FC = () => {
                         <Package size={22} className="text-primary" />
                         <Title level={3} className="!m-0 !font-serif text-charcoal">Chi tiết đơn hàng</Title>
                     </div>
-                    <Text type="secondary" className="text-xs uppercase tracking-widest font-medium text-gray">{selectedOrder.order_code}</Text>
+                    <div 
+                      className="flex items-center gap-2 cursor-pointer group/modalcopy w-fit"
+                      onClick={() => handleCopyCode(selectedOrder.order_code)}
+                    >
+                        <Text type="secondary" className="text-xs uppercase tracking-widest font-medium text-gray group-hover/modalcopy:text-primary transition-colors">
+                            {selectedOrder.order_code}
+                        </Text>
+                        <Copy size={12} className="text-gray/30 group-hover/modalcopy:text-primary transition-all" />
+                    </div>
                 </div>
                 <div>{getStatusTag(selectedOrder.status)}</div>
             </div>
@@ -266,7 +317,7 @@ const OrdersPage: React.FC = () => {
                     </div>
                     <div className="bg-background p-5 rounded-xl border border-gray/10 h-full flex flex-col justify-center">
                         <Text strong className="block text-charcoal mb-1 text-sm">
-                          {selectedOrder.payment_method === 'cod' ? 'Chuyển khoản' : 'Thanh toán khi nhận hàng (COD)'}
+                          {selectedOrder.payment_method === 'cod' ? 'Thanh toán khi nhận hàng (COD)' : 'Chuyển khoản ngân hàng'}
                         </Text>
                         <Text type="secondary" className="block text-xs text-gray">
                           Ngày đặt: {new Date(selectedOrder.created_at).toLocaleString("vi-VN")}
@@ -282,7 +333,7 @@ const OrdersPage: React.FC = () => {
                     <ShoppingBag size={18} className="text-primary" /> Sản phẩm đã mua
                 </Title>
                 {selectedOrder.items.map((item: any) => (
-                  <div key={item.id} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-white p-4 rounded-xl border border-gray/10 hover:border-primary/30 transition-colors">
+                  <div key={item.id} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-white p-4 rounded-xl border border-gray/10">
                     <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray/5 flex-shrink-0 border border-gray/10">
                       <img src={getImageUrl(item.image_url)} alt={item.name} className="w-full h-full object-cover" />
                     </div>
@@ -303,7 +354,7 @@ const OrdersPage: React.FC = () => {
                             ) : (
                                 <Button 
                                     size="small" 
-                                    className="bg-transparent border-primary text-primary text-xs rounded-lg px-4 hover:!bg-primary hover:!text-white transition-colors"
+                                    className="border-primary text-primary text-xs rounded-lg px-4 hover:!bg-primary hover:!text-white transition-colors"
                                     onClick={() => handleOpenReview(item, selectedOrder.id)}
                                 >
                                     Đánh giá
@@ -339,39 +390,20 @@ const OrdersPage: React.FC = () => {
                   </div>
               </div>
 
-              {/* NÚT HỦY ĐƠN TRONG MODAL */}
               {(selectedOrder.status === "pending" || selectedOrder.status === "processing") && (
                 <div className="mt-8 pt-6 border-t border-gray/10">
-                    <div className="flex items-start gap-3 bg-red-50/50 p-4 rounded-xl border border-red-100 mb-6">
-                        <AlertCircle size={20} className="text-red-500 mt-0.5 flex-shrink-0" />
-                        <div>
-                            <Text strong className="text-red-600 block text-sm mb-1">Bạn muốn hủy đơn hàng?</Text>
-                            <Text className="text-red-500/80 text-xs leading-relaxed">Đơn hàng chỉ có thể hủy khi chưa được giao cho đơn vị vận chuyển. Các voucher đã sử dụng sẽ được hoàn lại (nếu có).</Text>
-                        </div>
-                    </div>
                     <Popconfirm
                         title="Xác nhận hủy đơn hàng này?"
-                        description="Hành động này không thể hoàn tác."
                         onConfirm={() => handleCancelOrder(selectedOrder.id)}
                         okText="Hủy đơn"
                         cancelText="Đóng"
-                        okButtonProps={{ danger: true, loading: submitting, className: "rounded-md" }}
-                        cancelButtonProps={{ className: "rounded-md" }}
-                        placement="top"
+                        okButtonProps={{ danger: true, loading: submitting }}
                     >
                         <Button block danger type="primary" size="large" className="h-12 rounded-lg font-medium text-base shadow-sm">
                             Xác nhận hủy đơn
                         </Button>
                     </Popconfirm>
                 </div>
-              )}
-
-              {!["pending", "processing"].includes(selectedOrder.status) && (
-                  <div className="text-center mt-8">
-                      <Button type="text" onClick={() => setIsModalOpen(false)} className="text-gray hover:text-charcoal font-medium">
-                        Đóng cửa sổ
-                      </Button>
-                  </div>
               )}
             </div>
           </div>
@@ -398,15 +430,14 @@ const OrdersPage: React.FC = () => {
                 <Rate 
                   value={reviewData.rating} 
                   onChange={(val) => setReviewData({...reviewData, rating: val})} 
-                  className="text-yellow-400 text-3xl mb-2" 
+                  className="text-yellow-400 text-3xl" 
                 />
-                <div className="text-xs text-gray mt-2">Mức độ hài lòng của bạn</div>
             </div>
 
             <Input.TextArea 
               rows={4} 
-              placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này..." 
-              className="rounded-lg border-gray/20 p-4 mb-6 focus:border-primary focus:shadow-none text-base bg-background" 
+              placeholder="Chia sẻ trải nghiệm của bạn..." 
+              className="rounded-lg border-gray/20 p-4 mb-6 bg-background" 
               value={reviewData.comment} 
               onChange={(e) => setReviewData({...reviewData, comment: e.target.value})} 
             />
@@ -416,7 +447,7 @@ const OrdersPage: React.FC = () => {
               block 
               size="large" 
               loading={submitting} 
-              className="bg-primary border-primary h-12 rounded-lg font-medium text-base hover:!bg-primary/90 transition-all" 
+              className="bg-primary border-primary h-12 rounded-lg font-medium" 
               onClick={handleSubmitReview}
             >
               Gửi đánh giá

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import Product, { ProductVariant, Gallery } from "../models/ProductModel";
 import fs from "fs";
 import path from "path";
+import pool from "../config/db";
 
 const deleteFile = (filePath: string | undefined | null) => {
   if (!filePath) return;
@@ -103,47 +104,115 @@ export const create = async (req: Request, res: Response): Promise<Response> => 
 };
 
 // --- 3. CẬP NHẬT ---
-export const update = async (req: Request, res: Response): Promise<Response> => {
+export const update = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { name, slug, category_id, brand_id, description, status, variants: variantsStr } = req.body;
+  const files = req.files as Express.Multer.File[];
+
+  // Khởi tạo connection để dùng transaction (tùy thuộc vào thư viện mysql2 bạn đang dùng)
+  // Giả sử bạn đang dùng pool.promise()
+  const connection = await pool.getConnection(); 
+
   try {
-    const { id } = req.params;
-    const { name, slug, category_id, brand_id, description, status, variants: variantsStr } = req.body;
-    const files = req.files as Express.Multer.File[];
+    await connection.beginTransaction(); // Bắt đầu giao dịch
 
-    const current = await Product.findById(id);
-    if (!current) return res.status(404).json({ message: "Không tìm thấy" });
-
-    await Product.update(id, {
-      name, slug: slug || current.slug,
-      category_id: Number(category_id),
-      brand_id: brand_id && brand_id !== 'null' ? Number(brand_id) : null,
-      description, status
-    } as any);
-
-    await ProductVariant.deleteByProductId(Number(id));
-    const variants = JSON.parse(variantsStr || "[]");
-    for (const v of variants) {
-      await ProductVariant.create({ 
-        ...v, product_id: Number(id), price: Number(v.price), stock_qty: Number(v.stock_qty)
-      } as any);
+    // 1. Kiểm tra sản phẩm tồn tại
+    const current = await Product.findById(Number(id));
+    if (!current) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Sản phẩm không tồn tại" });
     }
 
-    if (files && files.length > 0) {
-      const oldGalleries = await Gallery.findAll({ where: { product_id: Number(id) } } as any);
-      oldGalleries.forEach((g: any) => deleteFile(g.image_url));
-      await Gallery.deleteByProductId(Number(id));
+    // 2. Cập nhật thông tin cơ bản
+    await Product.update(Number(id), {
+      name,
+      slug: slug || current.slug,
+      category_id: Number(category_id),
+      brand_id: brand_id && brand_id !== 'null' ? Number(brand_id) : null,
+      description,
+      status
+    } as any);
 
-      for (let i = 0; i < files.length; i++) {
-        await Gallery.create({
+    // 3. Xử lý Variants (Đồng bộ hóa: Update, Insert, Delete)
+    let incomingVariants = [];
+    try {
+      incomingVariants = typeof variantsStr === 'string' ? JSON.parse(variantsStr) : (variantsStr || []);
+    } catch (e) {
+      throw new Error("Định dạng variants không hợp lệ");
+    }
+
+    // Lấy các variant đang có trong DB
+    const existingVariants = await ProductVariant.findByProductId(Number(id));
+    const existingIds = existingVariants.map((v: any) => v.id);
+    const incomingIds = incomingVariants
+      .filter((v: any) => v.id)
+      .map((v: any) => Number(v.id));
+
+    // --- A. XỬ LÝ XÓA ---
+    const idsToDelete = existingIds.filter(exId => !incomingIds.includes(exId));
+    for (const deleteId of idsToDelete) {
+      try {
+        await ProductVariant.delete(deleteId);
+      } catch (err: any) {
+        // Nếu dính khóa ngoại (cart_items), báo lỗi và dừng transaction
+        throw new Error(`Không thể xóa biến thể ID ${deleteId} vì đang có trong giỏ hàng khách hàng.`);
+      }
+    }
+
+    // --- B. XỬ LÝ UPDATE & INSERT ---
+    for (const v of incomingVariants) {
+      const variantData = {
+        product_id: Number(id),
+        sku: v.sku,
+        variant_name: v.variant_name || v.name, // Khớp với DB của bạn
+        price: Number(v.price),
+        stock_qty: Number(v.stock_qty),
+        variant_image: v.variant_image || null
+      };
+
+      if (v.id && existingIds.includes(Number(v.id))) {
+        await ProductVariant.update(Number(v.id), variantData);
+      } else {
+        await ProductVariant.create(variantData);
+      }
+    }
+
+    // 4. Xử lý Hình ảnh (Nếu có file mới thì mới thay thế)
+    if (files && files.length > 0) {
+      const oldGalleries = await Gallery.findAllByProductId(Number(id));
+      
+      // Xóa ảnh vật lý
+      if (oldGalleries && oldGalleries.length > 0) {
+        oldGalleries.forEach((g: any) => {
+          if (typeof deleteFile === 'function') deleteFile(g.image_url);
+        });
+      }
+      
+      // Xóa trong DB và thêm mới
+      await Gallery.deleteByProductId(Number(id));
+      const galleryPromises = files.map((file, i) => {
+        return Gallery.create({
           product_id: Number(id),
-          image_url: `/uploads/products/${files[i].filename}`,
+          image_url: `/uploads/products/${file.filename}`,
           is_main: i === 0 ? 1 : 0,
           sort_order: i
         } as any);
-      }
+      });
+      await Promise.all(galleryPromises);
     }
-    return res.json({ message: "Cập nhật thành công" });
-  } catch (error) {
-    return res.status(500).json({ message: "Lỗi server" });
+
+    await connection.commit(); // Hoàn tất mọi thay đổi
+    return res.json({ message: "Cập nhật sản phẩm thành công" });
+
+  } catch (error: any) {
+    await connection.rollback(); // Hủy bỏ mọi thay đổi nếu có lỗi xảy ra
+    console.error("Lỗi cập nhật:", error);
+    return res.status(500).json({ 
+      message: error.message || "Lỗi server",
+      error: error.message 
+    });
+  } finally {
+    connection.release(); // Giải phóng connection trả về pool
   }
 };
 

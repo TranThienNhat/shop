@@ -300,53 +300,85 @@ const ProductDetailPage: React.FC = () => {
 
         {/* TABS CHI TIẾT & REVIEW */}
         <div className="mt-24">
-          <Tabs defaultActiveKey="1" size="large" centered className="Linh-tabs">
-            <TabPane tab={<span className="px-6 font-serif text-lg">Mô tả sản phẩm</span>} key="1">
-              <div className="bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-gray/10 leading-relaxed text-gray text-base max-w-4xl mx-auto">
-                <div dangerouslySetInnerHTML={{ __html: product.description || "Nội dung đang được cập nhật..." }} />
-              </div>
-            </TabPane>
-            
-            <TabPane tab={<span className="px-6 font-serif text-lg">Đánh giá khách hàng ({reviews.length})</span>} key="2">
+        <Tabs
+          defaultActiveKey="1"
+          size="large"
+          centered
+          className="Linh-tabs"
+          items={[
+            {
+              key: "1",
+              label: <span className="px-6 font-serif text-lg tracking-wide">Mô tả sản phẩm</span>,
+              children: (
                 <div className="max-w-4xl mx-auto py-8">
-                    {reviews.length === 0 ? (
-                        <div className="text-center py-16 bg-background rounded-2xl border border-dashed border-gray/20">
-                            <Star size={32} className="text-gray/30 mx-auto mb-3" />
-                            <Paragraph className="text-gray italic font-serif mb-0">Chưa có đánh giá nào cho sản phẩm này.<br/>Hãy trải nghiệm và để lại đánh giá đầu tiên nhé.</Paragraph>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {reviews.map((r: any) => (
-                                <div key={r.id} className="bg-background p-6 rounded-2xl border border-gray/10 hover:shadow-sm transition-all">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-serif font-bold text-base">
-                                                {r.user_name?.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <Text strong className="block text-charcoal font-serif text-base">{r.user_name}</Text>
-                                                <Text className="text-[10px] text-gray uppercase tracking-widest">
-                                                    {new Date(r.created_at).toLocaleDateString("vi-VN")}
-                                                </Text>
-                                            </div>
-                                        </div>
-                                        <Rate disabled value={Number(r.rating)} className="text-xs text-yellow-400" />
-                                    </div>
-                                    
-                                    <div className="relative pt-2">
-                                        <span className="text-4xl text-gray/10 absolute -top-4 -left-2 font-serif select-none">“</span>
-                                        <Paragraph className="text-gray text-sm leading-relaxed relative z-10 pl-4 mb-0">
-                                            {r.comment}
-                                        </Paragraph>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                  <div 
+                    className="bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-gray/10"
+                  >
+                    <div
+                      className="description-container leading-loose text-charcoal/80 text-base font-light"
+                      style={{ 
+                        whiteSpace: 'pre-line',
+                        wordBreak: 'break-word' 
+                      }}
+                    >
+                      {product.description || "Nội dung đang được cập nhật từ Linh Cosmetics..."}
+                    </div>
+                  </div>
                 </div>
-            </TabPane>
-          </Tabs>
-        </div>
+              ),
+            },
+            {
+              key: "2",
+              label: <span className="px-6 font-serif text-lg tracking-wide">Đánh giá ({reviews.length})</span>,
+              children: (
+                <div className="max-w-4xl mx-auto py-8">
+                  {reviews.length === 0 ? (
+                    <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray/20 shadow-sm">
+                      <Star size={32} className="text-gray/20 mx-auto mb-3" />
+                      <Paragraph className="text-gray italic font-serif mb-0 text-base">
+                        Chưa có đánh giá nào cho sản phẩm này.<br/>
+                        Hãy là người đầu tiên chia sẻ cảm nhận nhé.
+                      </Paragraph>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {reviews.map((r: any) => (
+                        <div 
+                          key={r.id} 
+                          className="bg-white p-6 rounded-2xl border border-gray/5 shadow-sm hover:shadow-md transition-all duration-300"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-primary/5 rounded-full flex items-center justify-center text-primary font-serif font-bold text-base border border-primary/10">
+                                {r.user_name?.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <Text strong className="block text-charcoal font-serif text-base leading-none mb-1">
+                                  {r.user_name}
+                                </Text>
+                                <Text className="text-[10px] text-gray uppercase tracking-widest font-medium">
+                                  {new Date(r.created_at).toLocaleDateString("vi-VN")}
+                                </Text>
+                              </div>
+                            </div>
+                            <Rate disabled value={Number(r.rating)} className="text-[10px] text-yellow-500" />
+                          </div>
+                          
+                          <div className="relative pt-2 pl-4 border-l-2 border-primary/10">
+                            <Paragraph className="text-gray text-sm leading-relaxed italic mb-0">
+                              "{r.comment}"
+                            </Paragraph>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+        />
+      </div>
       </div>
 
       {/* Cart Drawer trượt ra khi thêm hàng */}

@@ -67,7 +67,7 @@ class ProductModel extends BaseModel<IProduct> {
     return rows as any[];
   }
 
-  // 2. GHI ĐÈ HÀM COUNT ĐỂ FIX LỖI SQL SYNTAX
+  // 2. Đếm số lượng sản phẩm (Fix SQL Syntax)
   async count(options: any = {}): Promise<number> {
     let sql = `SELECT COUNT(DISTINCT p.id) as total FROM products p WHERE 1=1`;
     const values: any[] = [];
@@ -110,16 +110,36 @@ class ProductModel extends BaseModel<IProduct> {
   }
 }
 
+// --- PRODUCT VARIANT MODEL ---
 class ProductVariantModel extends BaseModel<IProductVariant> {
   constructor() { super("product_variants"); }
-  async deleteByProductId(productId: number) {
+
+  async findByProductId(productId: number): Promise<any[]> {
+    const [rows] = await this.db.query(`SELECT * FROM product_variants WHERE product_id = ?`, [productId]);
+    return rows as any[];
+  }
+
+  // Sửa lỗi Delete: Trả về Promise<boolean> để khớp với BaseModel
+  async delete(id: number | string): Promise<boolean> {
+    const [result]: any = await this.db.query(`DELETE FROM product_variants WHERE id = ?`, [id]);
+    return result.affectedRows > 0;
+  }
+
+  async deleteByProductId(productId: number): Promise<void> {
     await this.db.query(`DELETE FROM product_variants WHERE product_id = ?`, [productId]);
   }
 }
 
+// --- GALLERY MODEL ---
 class GalleryModel extends BaseModel<IGallery> {
   constructor() { super("product_galleries"); }
-  async deleteByProductId(productId: number) {
+
+  async findAllByProductId(productId: number): Promise<any[]> {
+    const [rows] = await this.db.query(`SELECT * FROM product_galleries WHERE product_id = ?`, [productId]);
+    return rows as any[];
+  }
+
+  async deleteByProductId(productId: number): Promise<void> {
     await this.db.query(`DELETE FROM product_galleries WHERE product_id = ?`, [productId]);
   }
 }

@@ -18,6 +18,7 @@ import {
   Package,
   Search,
   Settings,
+  Phone,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCart } from "../../contexts/CartContext";
@@ -110,7 +111,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   ];
 
   return (
-    <Layout className="min-h-screen bg-background">
+    <Layout className="min-h-screen bg-background relative">
       {/* HEADER */}
       <Header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-gray/10 px-4 lg:px-8 h-20 flex items-center">
         <div className="max-w-7xl mx-auto flex items-center justify-between w-full h-full">
@@ -131,7 +132,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
           {/* Right Actions */}
           <Space size="large" className="flex items-center">
-            {/* Search */}
             <Button
               type="text"
               icon={<Search size={22} />}
@@ -139,7 +139,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               onClick={() => setSearchModalVisible(true)}
             />
 
-            {/* Cart */}
             <Badge count={totalItems} size="small" color="#fb7185">
               <Button
                 type="text"
@@ -149,7 +148,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               />
             </Badge>
 
-            {/* User Menu / Login Actions */}
             {isAuthenticated ? (
               <Dropdown
                 menu={{ items: userMenuItems }}
@@ -190,7 +188,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <Footer className="bg-charcoal text-white/80 py-16 border-t border-gray/10">
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-            
             <div className="space-y-4">
               <Title level={3} className="!text-white !mb-0 font-serif tracking-tight">
                 Linh Cosmetics
@@ -234,7 +231,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <p className="leading-relaxed"><span className="text-white block mb-1">Cửa hàng chính:</span> 123 Đường Lụa, Phường Hoa, Quận Nàng Thơ, TP.HCM</p>
               </div>
             </div>
-
           </div>
 
           <div className="border-t border-white/10 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
@@ -246,6 +242,34 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </div>
         </div>
       </Footer>
+
+      {/* ZALO & CONTACT FLOATING BUTTONS */}
+      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-4">
+        {/* Zalo Button */}
+        <a
+          href="https://zalo.me/0334523154" // Thay bằng số điện thoại Zalo của bạn
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group relative flex items-center justify-center w-14 h-14 bg-[#0068ff] text-white rounded-full shadow-2xl hover:scale-110 transition-all duration-300 animate-bounce-slow"
+        >
+          <span className="absolute right-16 bg-charcoal text-white px-3 py-1 rounded-md text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg">
+            Chat Zalo với chúng tôi
+          </span>
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg" 
+            alt="Zalo" 
+            className="w-8 h-8"
+          />
+        </a>
+
+        {/* Hotline Button (Optional) */}
+        <a
+          href="tel:19001234"
+          className="flex items-center justify-center w-14 h-14 bg-primary text-white rounded-full shadow-2xl hover:scale-110 transition-all duration-300"
+        >
+          <Phone size={24} fill="currentColor" />
+        </a>
+      </div>
 
       {/* SEARCH MODAL */}
       <Modal
