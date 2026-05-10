@@ -195,17 +195,21 @@ CREATE TABLE `blogs` (
   `author_id` bigint DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `slug` (`slug`),
   KEY `author_id` (`author_id`),
   CONSTRAINT `blogs_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `suppliers` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL,
-  `address` text,
+  `name` varchar(255) NOT NULL COMMENT 'Tên công ty/nhà cung cấp',
+  `contact_name` varchar(255) DEFAULT NULL COMMENT 'Người đại diện liên hệ',
+  `address` text COMMENT 'Địa chỉ kho/văn phòng',
   `phone` varchar(20) DEFAULT NULL,
   `email` varchar(100) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'active' COMMENT 'active: Đang hợp tác, inactive: Tạm ngưng',
+  `note` text COMMENT 'Ghi chú chiết khấu, chính sách',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

@@ -19,6 +19,8 @@ import {
   Search,
   Settings,
   Phone,
+  BookOpen,
+  Heart,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCart } from "../../contexts/CartContext";
@@ -43,33 +45,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       navigate(`/products?search=${encodeURIComponent(searchValue.trim())}`);
       setSearchModalVisible(false);
       setSearchValue("");
-    } else {
-      navigate("/products");
-      setSearchModalVisible(false);
     }
   };
 
   const menuItems = [
-    {
-      key: "/",
-      label: <Link to="/" className="text-base font-medium">Trang chủ</Link>,
-    },
-    { 
-      key: "/brands", 
-      label: <Link to="/brands" className="text-base font-medium">Thương hiệu</Link> 
-    },
-    {
-      key: "/products",
-      label: <Link to="/products" className="text-base font-medium">Sản phẩm</Link>,
-    },
-    {
-      key: "/about",
-      label: <Link to="/about" className="text-base font-medium">Giới thiệu</Link>,
-    },
-    {
-      key: "/contact",
-      label: <Link to="/contact" className="text-base font-medium">Liên hệ</Link>,
-    },
+    { key: "/", label: <Link to="/">Trang chủ</Link> },
+    { key: "/brands", label: <Link to="/brands">Thương hiệu</Link> },
+    { key: "/products", label: <Link to="/products">Sản phẩm</Link> },
+    { key: "/blogs", label: <Link to="/blogs">Blog làm đẹp</Link> },
+    { key: "/about", label: <Link to="/about">Giới thiệu</Link> },
+    { key: "/contact", label: <Link to="/contact">Liên hệ</Link> },
   ];
 
   const userMenuItems = [
@@ -77,8 +62,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       key: "orders",
       label: (
         <Link to="/orders" className="flex items-center gap-2 py-1">
-          <Package size={16} />
-          <span>Đơn hàng của tôi</span>
+          {" "}
+          <Package size={16} /> <span>Đơn hàng của tôi</span>{" "}
         </Link>
       ),
     },
@@ -88,22 +73,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             key: "admin",
             label: (
               <Link to="/admin" className="flex items-center gap-2 py-1">
-                <Settings size={16} />
-                <span>Quản trị hệ thống</span>
+                {" "}
+                <Settings size={16} /> <span>Quản trị hệ thống</span>{" "}
               </Link>
             ),
           },
         ]
       : []),
-    {
-      type: "divider" as const,
-    },
+    { type: "divider" as const },
     {
       key: "logout",
       label: (
         <span className="flex items-center gap-2 text-red-500 py-1 hover:text-red-600 transition-colors">
-          <LogOut size={16} />
-          <span>Đăng xuất</span>
+          {" "}
+          <LogOut size={16} /> <span>Đăng xuất</span>{" "}
         </span>
       ),
       onClick: logout,
@@ -111,213 +94,138 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   ];
 
   return (
-    <Layout className="min-h-screen bg-background relative">
-      {/* HEADER */}
-      <Header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-gray/10 px-4 lg:px-8 h-20 flex items-center">
-        <div className="max-w-7xl mx-auto flex items-center justify-between w-full h-full">
-          {/* Logo */}
+    <Layout className="min-h-screen bg-[#FDFBF7]">
+      <Header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100 h-20 flex items-center px-8">
+        <div className="max-w-7xl mx-auto flex items-center justify-between w-full">
           <Link to="/" className="flex items-center">
-            <Title level={3} className="!mb-0 !text-charcoal font-serif tracking-tight">
+            <Title
+              level={3}
+              className="!mb-0 !text-[#2D2D2D] font-serif tracking-tighter"
+            >
               Linh Cosmetics
             </Title>
           </Link>
 
-          {/* Navigation Menu (Desktop) */}
           <Menu
             mode="horizontal"
             selectedKeys={[location.pathname]}
             items={menuItems}
-            className="flex-1 justify-center bg-transparent border-none hidden md:flex"
+            className="flex-1 justify-center bg-transparent border-none hidden md:flex font-medium"
           />
 
-          {/* Right Actions */}
-          <Space size="large" className="flex items-center">
+          <Space size="middle">
             <Button
               type="text"
               icon={<Search size={22} />}
-              className="text-charcoal hover:text-primary transition-colors p-0 flex items-center justify-center"
               onClick={() => setSearchModalVisible(true)}
             />
-
-            <Badge count={totalItems} size="small" color="#fb7185">
+            <Badge count={totalItems} color="#BC8F8F">
               <Button
                 type="text"
                 icon={<ShoppingCart size={22} />}
-                className="text-charcoal hover:text-primary transition-colors p-0 flex items-center justify-center"
                 onClick={() => navigate("/cart")}
               />
             </Badge>
-
             {isAuthenticated ? (
-              <Dropdown
-                menu={{ items: userMenuItems }}
-                placement="bottomRight"
-                trigger={["click"]}
-                overlayClassName="min-w-[200px]"
-              >
+              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                 <Button
                   type="text"
-                  className="text-charcoal hover:text-primary flex items-center gap-2 p-0 transition-colors"
+                  className="flex items-center gap-2 font-medium"
                 >
-                  <User size={22} />
-                  <span className="hidden lg:inline font-medium text-sm">{user?.name}</span>
+                  <User size={22} />{" "}
+                  <span className="hidden lg:inline">{user?.name}</span>
                 </Button>
               </Dropdown>
             ) : (
-              <Space className="hidden md:flex ml-2">
-                <Link to="/login">
-                  <Button type="text" className="text-charcoal hover:text-primary font-medium">
-                    Đăng nhập
-                  </Button>
-                </Link>
-                <Link to="/register">
-                  <Button type="primary" className="bg-primary border-primary hover:bg-primary/90 rounded-lg font-medium px-6">
-                    Đăng ký
-                  </Button>
-                </Link>
-              </Space>
+              <Link to="/login">
+                <Button
+                  type="primary"
+                  className="bg-[#BC8F8F] rounded-full px-6"
+                >
+                  Đăng nhập
+                </Button>
+              </Link>
             )}
           </Space>
         </div>
       </Header>
 
-      {/* CONTENT */}
-      <Content className="flex-1 w-full flex flex-col justify-start">
-        {children}
-      </Content>
+      <Content className="flex-1">{children}</Content>
 
-      {/* FOOTER */}
-      <Footer className="bg-charcoal text-white/80 py-16 border-t border-gray/10">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-            <div className="space-y-4">
-              <Title level={3} className="!text-white !mb-0 font-serif tracking-tight">
-                Linh Cosmetics
-              </Title>
-              <p className="text-white/60 leading-relaxed text-sm pr-4">
-                Thương hiệu mỹ phẩm cao cấp, mang đến vẻ đẹp tự nhiên, thanh lịch và trải nghiệm chăm sóc bản thân hoàn hảo nhất.
-              </p>
-            </div>
-
-            <div>
-              <Title level={5} className="!text-white !mb-6 uppercase tracking-widest text-xs">
-                Sản phẩm
-              </Title>
-              <ul className="space-y-3 text-sm text-white/60">
-                <li><Link to="/products?category=skincare" className="hover:text-white transition-colors">Chăm sóc da</Link></li>
-                <li><Link to="/products?category=makeup" className="hover:text-white transition-colors">Trang điểm</Link></li>
-                <li><Link to="/products?category=fragrance" className="hover:text-white transition-colors">Nước hoa</Link></li>
-                <li><Link to="/products?category=bodycare" className="hover:text-white transition-colors">Chăm sóc cơ thể</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <Title level={5} className="!text-white !mb-6 uppercase tracking-widest text-xs">
-                Hỗ trợ khách hàng
-              </Title>
-              <ul className="space-y-3 text-sm text-white/60">
-                <li><Link to="/about" className="hover:text-white transition-colors">Về chúng tôi</Link></li>
-                <li><Link to="/contact" className="hover:text-white transition-colors">Liên hệ</Link></li>
-                <li><Link to="/shipping" className="hover:text-white transition-colors">Chính sách vận chuyển</Link></li>
-                <li><Link to="/returns" className="hover:text-white transition-colors">Chính sách đổi trả</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <Title level={5} className="!text-white !mb-6 uppercase tracking-widest text-xs">
-                Liên hệ
-              </Title>
-              <div className="space-y-3 text-sm text-white/60">
-                <p className="flex items-center gap-2"><span className="text-white">Email:</span> hello@Linhcosmetics.vn</p>
-                <p className="flex items-center gap-2"><span className="text-white">Hotline:</span> 1900 1234</p>
-                <p className="leading-relaxed"><span className="text-white block mb-1">Cửa hàng chính:</span> 123 Đường Lụa, Phường Hoa, Quận Nàng Thơ, TP.HCM</p>
-              </div>
-            </div>
+      <Footer className="bg-[#2D2D2D] text-white/70 py-16 px-8 mt-20">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
+          <div className="space-y-4">
+            <Title level={4} className="!text-white font-serif">
+              Linh Cosmetics
+            </Title>
+            <p className="text-sm italic">
+              "Vẻ đẹp bắt đầu từ sự chăm sóc tâm hồn và làn da."
+            </p>
           </div>
-
-          <div className="border-t border-white/10 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
-            <p>&copy; 2024 Linh Cosmetics. All rights reserved.</p>
-            <div className="flex gap-6">
-              <Link to="/privacy" className="hover:text-white transition-colors">Chính sách bảo mật</Link>
-              <Link to="/terms" className="hover:text-white transition-colors">Điều khoản dịch vụ</Link>
+          <div>
+            <h4 className="text-white font-bold mb-6">Khám phá</h4>
+            <ul className="space-y-3 text-sm">
+              <li>
+                <Link to="/products" className="hover:text-[#BC8F8F]">
+                  Tất cả sản phẩm
+                </Link>
+              </li>
+              <li>
+                <Link to="/blogs" className="hover:text-[#BC8F8F]">
+                  Bí quyết làm đẹp
+                </Link>
+              </li>
+              <li>
+                <Link to="/brands" className="hover:text-[#BC8F8F]">
+                  Thương hiệu nổi bật
+                </Link>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-white font-bold mb-6">Liên hệ</h4>
+            <p className="text-sm">Hotline: 1900 1234</p>
+            <p className="text-sm">Email: contact@linhcosmetics.vn</p>
+          </div>
+          <div>
+            <h4 className="text-white font-bold mb-6">Theo dõi chúng tôi</h4>
+            <div className="flex gap-4">
+              {/* Thêm các icon mạng xã hội ở đây */}
             </div>
           </div>
         </div>
       </Footer>
 
-      {/* ZALO & CONTACT FLOATING BUTTONS */}
-      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-4">
-        {/* Zalo Button */}
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-4">
         <a
-          href="https://zalo.me/0334523154" // Thay bằng số điện thoại Zalo của bạn
+          href="https://zalo.me/0334523154" // Thay số điện thoại của bạn vào đây
           target="_blank"
           rel="noopener noreferrer"
-          className="group relative flex items-center justify-center w-14 h-14 bg-[#0068ff] text-white rounded-full shadow-2xl hover:scale-110 transition-all duration-300 animate-bounce-slow"
+          className="w-14 h-14 bg-[#0068FF] text-white rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform overflow-hidden"
         >
-          <span className="absolute right-16 bg-charcoal text-white px-3 py-1 rounded-md text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg">
-            Chat Zalo với chúng tôi
-          </span>
+          {/* Bạn có thể dùng một img icon Zalo để nhìn chuyên nghiệp hơn */}
           <img 
             src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg" 
             alt="Zalo" 
             className="w-8 h-8"
           />
         </a>
-
-        {/* Hotline Button (Optional) */}
-        <a
-          href="tel:19001234"
-          className="flex items-center justify-center w-14 h-14 bg-primary text-white rounded-full shadow-2xl hover:scale-110 transition-all duration-300"
-        >
-          <Phone size={24} fill="currentColor" />
-        </a>
       </div>
 
-      {/* SEARCH MODAL */}
       <Modal
         open={searchModalVisible}
-        onCancel={() => {
-          setSearchModalVisible(false);
-          setSearchValue("");
-        }}
+        onCancel={() => setSearchModalVisible(false)}
         footer={null}
-        width={550}
         centered
-        closeIcon={null}
-        styles={{ content: { borderRadius: "20px", padding: "32px" } }}
       >
-        <div className="flex flex-col gap-6">
-          <div className="text-center">
-            <Title level={3} className="!font-serif !text-charcoal !mb-2">Tìm kiếm</Title>
-            <Text className="text-gray text-sm">Nhập tên sản phẩm bạn đang tìm kiếm</Text>
-          </div>
-          
-          <div className="flex gap-3">
-            <Input
-              placeholder="Ví dụ: son môi, serum dưỡng ẩm..."
-              size="large"
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              onPressEnter={handleSearch}
-              autoFocus
-              className="rounded-lg border-gray/20 focus:border-primary focus:shadow-none bg-background h-12"
-              prefix={<Search size={18} className="text-gray mr-2" />}
-            />
-            <Button 
-              type="primary" 
-              onClick={handleSearch}
-              className="bg-primary border-primary hover:bg-primary/90 rounded-lg h-12 px-6 font-medium"
-            >
-              Tìm ngay
-            </Button>
-          </div>
-          
-          <div className="flex justify-center gap-4 text-xs">
-            <Button type="text" onClick={() => { setSearchModalVisible(false); setSearchValue(""); }} className="text-gray hover:text-charcoal font-medium">
-              Đóng cửa sổ
-            </Button>
-          </div>
-        </div>
+        <Input
+          placeholder="Bạn tìm gì hôm nay?"
+          size="large"
+          prefix={<Search size={20} />}
+          onPressEnter={handleSearch}
+          onChange={(e) => setSearchValue(e.target.value)}
+        />
       </Modal>
     </Layout>
   );

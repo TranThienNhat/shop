@@ -12,6 +12,9 @@ import reviewRoutes from "./routes/reviewRoutes";
 import userRoutes from "./routes/userRoutes";
 import couponRoutes from "./routes/couponRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
+import blogRoutes from "./routes/blogRoutes";
+import supplierRoutes from "./routes/supplierRoutes";
+import purchaseRoutes from "./routes/purchaseRoutes";
 
 dotenv.config();
 
@@ -44,6 +47,15 @@ app.use("/api/reviews", reviewRoutes);
 // 5. Admin (Quản lý người dùng, Dashboard)
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+
+//6. Blog
+app.use("/api/blogs", blogRoutes);
+
+//7. Supplier
+app.use("/api/suppliers", supplierRoutes);
+
+//8. Purchase receipts
+app.use("/api/purchase-receipts", purchaseRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

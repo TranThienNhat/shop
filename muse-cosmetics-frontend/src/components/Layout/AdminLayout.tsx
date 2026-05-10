@@ -6,7 +6,6 @@ import {
   Typography,
   Dropdown,
   Space,
-  Badge,
   Tooltip,
   Breadcrumb,
 } from "antd";
@@ -21,9 +20,11 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  BellOutlined,
   HomeOutlined,
   GiftOutlined,
+  FileTextOutlined,
+  TruckOutlined,
+  ImportOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -61,6 +62,21 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: <Link to="/admin/brands">Thương hiệu</Link>,
     },
     {
+      key: "/admin/blogs",
+      icon: <FileTextOutlined />,
+      label: <Link to="/admin/blogs">Bài viết Blog</Link>,
+    },
+    {
+      key: "/admin/suppliers",
+      icon: <TruckOutlined />,
+      label: <Link to="/admin/suppliers">Nhà cung cấp</Link>,
+    },
+    {
+      key: "/admin/purchases",
+      icon: <ImportOutlined />,
+      label: <Link to="/admin/purchases">Nhập hàng kho</Link>,
+    },
+    {
       key: "/admin/coupons",
       icon: <GiftOutlined />,
       label: <Link to="/admin/coupons">Mã giảm giá</Link>,
@@ -78,23 +94,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   ];
 
   const userMenuItems = [
-    {
-      key: "profile",
-      label: "Thông tin cá nhân",
-      icon: <UserOutlined />,
-    },
+    { key: "profile", label: "Thông tin cá nhân", icon: <UserOutlined /> },
     {
       key: "user-site",
-      label: (
-        <Link to="/" className="flex items-center gap-2">
-          <HomeOutlined />
-          Về trang người dùng
-        </Link>
-      ),
+      label: <Link to="/">Về trang người dùng</Link>,
+      icon: <HomeOutlined />,
     },
-    {
-      type: "divider" as const,
-    },
+    { type: "divider" as const },
     {
       key: "logout",
       label: "Đăng xuất",
@@ -109,116 +115,58 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         trigger={null}
         collapsible
         collapsed={collapsed}
-        className="bg-white shadow-lg"
+        className="bg-white shadow-lg fixed left-0 top-0 bottom-0 z-50"
         width={250}
-        style={{
-          overflow: "auto",
-          height: "100vh",
-          position: "fixed",
-          left: 0,
-          top: 0,
-          bottom: 0,
-        }}>
-        <div className="p-4 border-b border-gray-200">
+        style={{ height: "100vh", overflow: "auto" }}
+      >
+        <div className="p-4 border-b border-gray-100">
           <Link to="/admin" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">M</span>
+            <div className="w-8 h-8 bg-[#BC8F8F] rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">L</span>
             </div>
             {!collapsed && (
-              <div>
-                <Title level={5} className="!mb-0 !text-charcoal">
-                  Linh Admin
-                </Title>
-              </div>
+              <Title level={5} className="!mb-0 !text-[#2D2D2D]">Linh Admin</Title>
             )}
           </Link>
         </div>
-
         <Menu
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
-          className="border-none"
-          style={{ height: "calc(100vh - 80px)", borderRight: 0 }}
+          className="border-none mt-2"
         />
       </Sider>
 
-      <Layout
-        style={{
-          marginLeft: collapsed ? 80 : 250,
-          transition: "margin-left 0.2s",
-        }}>
-        <Header
-          className="bg-white shadow-sm px-4 flex items-center justify-between"
-          style={{
-            position: "fixed",
-            zIndex: 1,
-            width: `calc(100% - ${collapsed ? 80 : 250}px)`,
-            transition: "width 0.2s",
-          }}>
-          <div className="flex items-center gap-4">
-            <Button
-              type="text"
-              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={() => setCollapsed(!collapsed)}
-              className="text-charcoal hover:text-primary"
-            />
-          </div>
-
-          <Space size="middle">
-            <Tooltip title="Về trang người dùng">
-              <Link to="/">
-                <Button
-                  type="text"
-                  icon={<HomeOutlined />}
-                  className="text-charcoal hover:text-primary"
-                />
-              </Link>
-            </Tooltip>
-            <Dropdown
-              menu={{ items: userMenuItems }}
-              placement="bottomRight"
-              trigger={["click"]}>
-              <Button
-                type="text"
-                className="text-charcoal hover:text-primary flex items-center gap-2">
-                <UserOutlined />
-                <span>{user?.name}</span>
+      <Layout style={{ marginLeft: collapsed ? 80 : 250, transition: "all 0.2s" }}>
+        <Header className="bg-white/80 backdrop-blur-md shadow-sm px-6 flex items-center justify-between sticky top-0 z-40">
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+            className="text-gray-600"
+          />
+          <Space size="large">
+            <Dropdown menu={{ items: userMenuItems }} trigger={["click"]}>
+              <Button type="text" className="flex items-center gap-2 font-medium">
+                <UserOutlined /> {user?.name}
               </Button>
             </Dropdown>
           </Space>
         </Header>
 
-        <Content
-          className="p-6 bg-gray-50"
-          style={{ marginTop: 64, minHeight: "calc(100vh - 64px)" }}>
-          <div className="mb-4">
+        <Content className="p-8 bg-[#FDFBF7]">
+          <div className="mb-6">
             <Breadcrumb>
-              <Breadcrumb.Item>
-                <Link to="/" className="text-gray-500 hover:text-primary">
-                  <HomeOutlined className="mr-1" />
-                  Trang chủ
-                </Link>
+              <Breadcrumb.Item><HomeOutlined /></Breadcrumb.Item>
+              <Breadcrumb.Item>Admin Panel</Breadcrumb.Item>
+              <Breadcrumb.Item className="capitalize">
+                {location.pathname.split("/").pop()?.replace("-", " ")}
               </Breadcrumb.Item>
-              <Breadcrumb.Item>
-                <Link to="/admin" className="text-gray-500 hover:text-primary">
-                  Admin Panel
-                </Link>
-              </Breadcrumb.Item>
-              {location.pathname !== "/admin" && (
-                <Breadcrumb.Item className="text-charcoal">
-                  {location.pathname.includes("/products") && "Sản phẩm"}
-                  {location.pathname.includes("/categories") && "Danh mục"}
-                  {location.pathname.includes("/brands") && "Thương hiệu"}
-                  {location.pathname.includes("/coupons") && "Mã giảm giá"}
-                  {location.pathname.includes("/orders") && "Đơn hàng"}
-                  {location.pathname.includes("/users") && "Người dùng"}
-                  {location.pathname.includes("/reports") && "Báo cáo"}
-                </Breadcrumb.Item>
-              )}
             </Breadcrumb>
           </div>
-          {children}
+          <div className="bg-white p-6 rounded-xl shadow-sm min-h-[80vh]">
+            {children}
+          </div>
         </Content>
       </Layout>
     </Layout>
