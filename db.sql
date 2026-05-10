@@ -234,28 +234,3 @@ CREATE TABLE `purchase_receipt_details` (
   CONSTRAINT `purchase_receipt_details_ibfk_1` FOREIGN KEY (`receipt_id`) REFERENCES `purchase_receipts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `purchase_receipt_details_ibfk_2` FOREIGN KEY (`variant_id`) REFERENCES `product_variants` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE `export_receipts` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `user_id` bigint NOT NULL COMMENT 'Người lập phiếu/Nhân viên xuất',
-  `buyer_name` varchar(255) DEFAULT NULL COMMENT 'Tên người mua',
-  `buyer_address` text DEFAULT NULL COMMENT 'Địa chỉ người mua',
-  `export_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `reason` varchar(255) DEFAULT NULL COMMENT 'Lý do xuất (bán lẻ, tiêu hủy...)',
-  `note` text,
-  PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
-  CONSTRAINT `export_receipts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE `export_receipt_details` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `export_id` bigint NOT NULL,
-  `variant_id` bigint NOT NULL COMMENT 'Liên kết đến biến thể cụ thể',
-  `quantity` int NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `export_id` (`export_id`),
-  KEY `variant_id` (`variant_id`),
-  CONSTRAINT `export_receipt_details_ibfk_1` FOREIGN KEY (`export_id`) REFERENCES `export_receipts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `export_receipt_details_ibfk_2` FOREIGN KEY (`variant_id`) REFERENCES `product_variants` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
