@@ -174,7 +174,6 @@ const ProductDetailPage: React.FC = () => {
                     <Text className="text-gray text-xs font-medium">({reviews.length} đánh giá)</Text>
                   </div>
                   <Divider type="vertical" className="bg-gray/20 h-4" />
-                  <Text className="text-gray text-xs uppercase tracking-widest">Mã SP: {selectedVariant?.sku || 'Linh-001'}</Text>
                 </div>
               </div>
 

@@ -126,13 +126,11 @@ CREATE TABLE `product_galleries` (
 CREATE TABLE `product_variants` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `product_id` bigint NOT NULL,
-  `sku` varchar(100) DEFAULT NULL,
   `variant_name` varchar(255) DEFAULT NULL,
   `price` decimal(15,2) NOT NULL,
   `stock_qty` int DEFAULT '0',
   `variant_image` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `sku` (`sku`),
   KEY `product_id` (`product_id`),
   CONSTRAINT `product_variants_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

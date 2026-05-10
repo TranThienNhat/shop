@@ -5,6 +5,7 @@ import {
   create,
   update,
   remove,
+  allVariants,
 } from "../controllers/productController";
 import { authenticate, requireAdmin } from "../middlewares/authMiddleware";
 import { uploadProduct } from "../middlewares/uploadMiddleware";
@@ -13,8 +14,8 @@ const router = Router();
 
 // --- Public Routes ---
 router.get("/", index);
+router.get("/purchase/all-variants", allVariants);
 router.get("/:id", show);
-
 // --- Protected Routes (Chỉ dành cho Admin) ---
 
 /**
@@ -24,11 +25,11 @@ router.get("/:id", show);
  * - uploadProduct.array("images", 10): Nhận tối đa 10 file với key là "images"
  */
 router.post(
-  "/", 
-  authenticate, 
-  requireAdmin, 
-  uploadProduct.array("images", 10), 
-  create
+  "/",
+  authenticate,
+  requireAdmin,
+  uploadProduct.array("images", 10),
+  create,
 );
 
 /**
@@ -36,11 +37,11 @@ router.post(
  * Tương tự như tạo mới, cho phép gửi kèm ảnh mới để thay thế gallery cũ
  */
 router.put(
-  "/:id", 
-  authenticate, 
-  requireAdmin, 
-  uploadProduct.array("images", 10), 
-  update
+  "/:id",
+  authenticate,
+  requireAdmin,
+  uploadProduct.array("images", 10),
+  update,
 );
 
 /**

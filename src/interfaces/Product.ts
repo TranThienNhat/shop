@@ -11,7 +11,6 @@ export interface IProduct {
 export interface IProductVariant {
   id?: number;
   product_id?: number;
-  sku?: string;
   variant_name: string;
   price: number;
   stock_qty: number;

@@ -7,7 +7,9 @@ import pool from "../config/db";
 const deleteFile = (filePath: string | undefined | null) => {
   if (!filePath) return;
   try {
-    const cleanedPath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
+    const cleanedPath = filePath.startsWith("/")
+      ? filePath.substring(1)
+      : filePath;
     const fullPath = path.join(process.cwd(), cleanedPath);
     if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
   } catch (err) {
@@ -22,14 +24,23 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = (page - 1) * limit;
 
-    const search = (req.query.search as string) || (req.query.keyword as string);
-    const category_id = req.query.category_id ? parseInt(req.query.category_id as string) : undefined;
-    const brand_id = req.query.brand_id ? parseInt(req.query.brand_id as string) : undefined;
+    const search =
+      (req.query.search as string) || (req.query.keyword as string);
+    const category_id = req.query.category_id
+      ? parseInt(req.query.category_id as string)
+      : undefined;
+    const brand_id = req.query.brand_id
+      ? parseInt(req.query.brand_id as string)
+      : undefined;
     const status = req.query.status as string;
-    
+
     // Lấy thêm min_price và max_price từ query
-    const min_price = req.query.min_price ? parseFloat(req.query.min_price as string) : undefined;
-    const max_price = req.query.max_price ? parseFloat(req.query.max_price as string) : undefined;
+    const min_price = req.query.min_price
+      ? parseFloat(req.query.min_price as string)
+      : undefined;
+    const max_price = req.query.max_price
+      ? parseFloat(req.query.max_price as string)
+      : undefined;
 
     const where: any = {};
     if (status && status !== "all") where.status = status;
@@ -37,27 +48,27 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
     if (brand_id) where.brand_id = brand_id;
 
     // Truyền thêm min_price, max_price vào hàm findAll
-    const products = await Product.findAll({ 
-      where, 
-      search, 
-      limit, 
-      offset, 
+    const products = await Product.findAll({
+      where,
+      search,
+      limit,
+      offset,
       min_price, // Thêm dòng này
       max_price, // Thêm dòng này
-      orderBy: "id", 
-      orderDir: "DESC" 
-    } as any);
-    
-    const total = await Product.count({ 
-      where, 
-      search,
-      min_price, // Đừng quên đếm tổng cũng cần lọc giá
-      max_price 
+      orderBy: "id",
+      orderDir: "DESC",
     } as any);
 
-    return res.json({ 
-      data: products, 
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) } 
+    const total = await Product.count({
+      where,
+      search,
+      min_price, // Đừng quên đếm tổng cũng cần lọc giá
+      max_price,
+    } as any);
+
+    return res.json({
+      data: products,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
     console.error(">>> Error index:", error);
@@ -66,7 +77,10 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
 };
 
 // --- 2. TẠO MỚI ---
-export const create = async (req: Request, res: Response): Promise<Response> => {
+export const create = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
   try {
     const { name, slug, category_id, brand_id, description, status } = req.body;
     const variants = JSON.parse(req.body.variants || "[]");
@@ -76,14 +90,17 @@ export const create = async (req: Request, res: Response): Promise<Response> => 
       name,
       slug: slug || `${Date.now()}`,
       category_id: Number(category_id),
-      brand_id: brand_id && brand_id !== 'null' ? Number(brand_id) : null,
+      brand_id: brand_id && brand_id !== "null" ? Number(brand_id) : null,
       description,
-      status: status || "active"
+      status: status || "active",
     } as any);
 
     for (const v of variants) {
-      await ProductVariant.create({ 
-        ...v, product_id: productId, price: Number(v.price), stock_qty: Number(v.stock_qty)
+      await ProductVariant.create({
+        ...v,
+        product_id: productId,
+        price: Number(v.price),
+        stock_qty: Number(v.stock_qty),
       } as any);
     }
 
@@ -93,7 +110,7 @@ export const create = async (req: Request, res: Response): Promise<Response> => 
           product_id: productId,
           image_url: `/uploads/products/${files[i].filename}`,
           is_main: i === 0 ? 1 : 0,
-          sort_order: i
+          sort_order: i,
         } as any);
       }
     }
@@ -106,12 +123,20 @@ export const create = async (req: Request, res: Response): Promise<Response> => 
 // --- 3. CẬP NHẬT ---
 export const update = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, slug, category_id, brand_id, description, status, variants: variantsStr } = req.body;
+  const {
+    name,
+    slug,
+    category_id,
+    brand_id,
+    description,
+    status,
+    variants: variantsStr,
+  } = req.body;
   const files = req.files as Express.Multer.File[];
 
   // Khởi tạo connection để dùng transaction (tùy thuộc vào thư viện mysql2 bạn đang dùng)
   // Giả sử bạn đang dùng pool.promise()
-  const connection = await pool.getConnection(); 
+  const connection = await pool.getConnection();
 
   try {
     await connection.beginTransaction(); // Bắt đầu giao dịch
@@ -128,15 +153,18 @@ export const update = async (req: Request, res: Response) => {
       name,
       slug: slug || current.slug,
       category_id: Number(category_id),
-      brand_id: brand_id && brand_id !== 'null' ? Number(brand_id) : null,
+      brand_id: brand_id && brand_id !== "null" ? Number(brand_id) : null,
       description,
-      status
+      status,
     } as any);
 
     // 3. Xử lý Variants (Đồng bộ hóa: Update, Insert, Delete)
     let incomingVariants = [];
     try {
-      incomingVariants = typeof variantsStr === 'string' ? JSON.parse(variantsStr) : (variantsStr || []);
+      incomingVariants =
+        typeof variantsStr === "string"
+          ? JSON.parse(variantsStr)
+          : variantsStr || [];
     } catch (e) {
       throw new Error("Định dạng variants không hợp lệ");
     }
@@ -149,13 +177,17 @@ export const update = async (req: Request, res: Response) => {
       .map((v: any) => Number(v.id));
 
     // --- A. XỬ LÝ XÓA ---
-    const idsToDelete = existingIds.filter(exId => !incomingIds.includes(exId));
+    const idsToDelete = existingIds.filter(
+      (exId) => !incomingIds.includes(exId),
+    );
     for (const deleteId of idsToDelete) {
       try {
         await ProductVariant.delete(deleteId);
       } catch (err: any) {
         // Nếu dính khóa ngoại (cart_items), báo lỗi và dừng transaction
-        throw new Error(`Không thể xóa biến thể ID ${deleteId} vì đang có trong giỏ hàng khách hàng.`);
+        throw new Error(
+          `Không thể xóa biến thể ID ${deleteId} vì đang có trong giỏ hàng khách hàng.`,
+        );
       }
     }
 
@@ -163,11 +195,10 @@ export const update = async (req: Request, res: Response) => {
     for (const v of incomingVariants) {
       const variantData = {
         product_id: Number(id),
-        sku: v.sku,
         variant_name: v.variant_name || v.name, // Khớp với DB của bạn
         price: Number(v.price),
         stock_qty: Number(v.stock_qty),
-        variant_image: v.variant_image || null
+        variant_image: v.variant_image || null,
       };
 
       if (v.id && existingIds.includes(Number(v.id))) {
@@ -180,14 +211,14 @@ export const update = async (req: Request, res: Response) => {
     // 4. Xử lý Hình ảnh (Nếu có file mới thì mới thay thế)
     if (files && files.length > 0) {
       const oldGalleries = await Gallery.findAllByProductId(Number(id));
-      
+
       // Xóa ảnh vật lý
       if (oldGalleries && oldGalleries.length > 0) {
         oldGalleries.forEach((g: any) => {
-          if (typeof deleteFile === 'function') deleteFile(g.image_url);
+          if (typeof deleteFile === "function") deleteFile(g.image_url);
         });
       }
-      
+
       // Xóa trong DB và thêm mới
       await Gallery.deleteByProductId(Number(id));
       const galleryPromises = files.map((file, i) => {
@@ -195,7 +226,7 @@ export const update = async (req: Request, res: Response) => {
           product_id: Number(id),
           image_url: `/uploads/products/${file.filename}`,
           is_main: i === 0 ? 1 : 0,
-          sort_order: i
+          sort_order: i,
         } as any);
       });
       await Promise.all(galleryPromises);
@@ -203,13 +234,12 @@ export const update = async (req: Request, res: Response) => {
 
     await connection.commit(); // Hoàn tất mọi thay đổi
     return res.json({ message: "Cập nhật sản phẩm thành công" });
-
   } catch (error: any) {
     await connection.rollback(); // Hủy bỏ mọi thay đổi nếu có lỗi xảy ra
     console.error("Lỗi cập nhật:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: error.message || "Lỗi server",
-      error: error.message 
+      error: error.message,
     });
   } finally {
     connection.release(); // Giải phóng connection trả về pool
@@ -225,22 +255,22 @@ export const show = async (req: Request, res: Response): Promise<Response> => {
     const product = await Product.findWithVariants(id);
 
     if (!product) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Sản phẩm không tồn tại" 
+      return res.status(404).json({
+        success: false,
+        message: "Sản phẩm không tồn tại",
       });
     }
 
     // Trả về dữ liệu đầy đủ bao gồm variants và galleries
-    return res.json({ 
+    return res.json({
       success: true,
-      data: product 
+      data: product,
     });
   } catch (error) {
     console.error(">>> Error in Product Show:", error);
-    return res.status(500).json({ 
-      success: false, 
-      message: "Lỗi hệ thống khi lấy chi tiết sản phẩm" 
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi hệ thống khi lấy chi tiết sản phẩm",
     });
   }
 };
@@ -257,5 +287,35 @@ export const remove = async (req: Request, res: Response) => {
     return res.json({ message: "Xóa thành công" });
   } catch (error) {
     return res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+export const allVariants = async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT 
+        pv.id, 
+        p.name as product_name, 
+        pv.variant_name, 
+        pv.price, 
+        pv.stock_qty
+      FROM product_variants pv
+      JOIN products p ON pv.product_id = p.id
+      WHERE p.status = 'active'
+      ORDER BY p.name ASC
+    `);
+
+    // Trả về bọc trong object success và data để đồng bộ với FE
+    return res.json({
+      success: true,
+      data: rows,
+    });
+  } catch (error: any) {
+    console.error(">>> Error allVariants:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi lấy danh sách biến thể",
+      error: error.message,
+    });
   }
 };

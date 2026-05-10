@@ -1,7 +1,6 @@
 export interface ProductVariant {
   id: number;
   product_id: number;
-  sku?: string;
   variant_name?: string;
   price: number;
   stock_qty: number;
@@ -40,7 +39,6 @@ export interface CartItem {
   product_id: number;
   name: string;
   variant_name?: string;
-  sku?: string;
   price: number;
   quantity: number;
   stock_qty: number;

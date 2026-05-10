@@ -35,6 +35,8 @@ import BlogAdmin from "./pages/admin/BlogAdmin";
 import BlogListPage from "./pages/BlogListPage";
 import BlogDetailPage from "./pages/BlogDetailPage";
 import SuppliersPage from "./pages/admin/SuppliersPage";
+import PurchaseListPage from "./pages/admin/PurchaseListPage";
+import PurchaseReceiptFormPage from "./pages/admin/PurchaseReceiptFormPage";
 
 const App: React.FC = () => {
   return (
@@ -46,7 +48,10 @@ const App: React.FC = () => {
               {/* Auth Routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
-              <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+              <Route
+                path="/checkout/success"
+                element={<CheckoutSuccessPage />}
+              />
 
               {/* Admin Routes */}
               <Route
@@ -56,17 +61,48 @@ const App: React.FC = () => {
                     <AdminLayout>
                       <Routes>
                         <Route path="/" element={<DashboardPage />} />
-                        <Route path="/products" element={<AdminProductsPage />} />
-                        <Route path="/products/create" element={<ProductFormPage />} />
-                        <Route path="/products/:id/edit" element={<ProductFormPage />} />
-                        <Route path="/categories" element={<CategoriesPage />} />
+                        <Route
+                          path="/products"
+                          element={<AdminProductsPage />}
+                        />
+                        <Route
+                          path="/products/create"
+                          element={<ProductFormPage />}
+                        />
+                        <Route
+                          path="/products/:id/edit"
+                          element={<ProductFormPage />}
+                        />
+                        <Route
+                          path="/categories"
+                          element={<CategoriesPage />}
+                        />
                         <Route path="/brands" element={<BrandsPage />} />
                         <Route path="/orders" element={<AdminOrdersPage />} />
                         <Route path="/users" element={<UsersPage />} />
                         <Route path="/coupons" element={<CouponManagement />} />
                         <Route path="/blogs" element={<BlogAdmin />} />
                         <Route path="/suppliers" element={<SuppliersPage />} />
-                        {/* <Route path="/purchases" element={<PurchaseReceiptsPage />} /> */}
+
+                        {/* SỬA TẠI ĐÂY: Bỏ /admin ở đầu và thống nhất tên purchases */}
+                        <Route
+                          path="/purchases"
+                          element={<PurchaseListPage />}
+                        />
+                        <Route
+                          path="/purchase/create"
+                          element={<PurchaseReceiptFormPage />}
+                        />
+                        <Route
+                          path="/purchase/edit/:id"
+                          element={<PurchaseReceiptFormPage />}
+                        />
+
+                        {/* Thêm trang 404 cho admin để tránh trang trắng khi gõ sai */}
+                        <Route
+                          path="*"
+                          element={<div>Trang quản trị không tồn tại</div>}
+                        />
                       </Routes>
                     </AdminLayout>
                   </ProtectedRoute>
@@ -81,7 +117,10 @@ const App: React.FC = () => {
                     <Routes>
                       <Route path="/" element={<HomePage />} />
                       <Route path="/products" element={<ProductsPage />} />
-                      <Route path="/products/:id" element={<ProductDetailPage />} />
+                      <Route
+                        path="/products/:id"
+                        element={<ProductDetailPage />}
+                      />
                       <Route path="/cart" element={<CartPage />} />
                       <Route path="/checkout" element={<CheckoutPage />} />
                       <Route path="/orders" element={<OrdersPage />} />
@@ -95,9 +134,16 @@ const App: React.FC = () => {
                         element={
                           <div className="min-h-screen bg-background flex items-center justify-center">
                             <div className="text-center">
-                              <h1 className="text-4xl font-bold text-charcoal mb-4">404</h1>
-                              <p className="text-gray mb-6">Trang không tồn tại</p>
-                              <a href="/" className="text-primary hover:text-primary/80">
+                              <h1 className="text-4xl font-bold text-charcoal mb-4">
+                                404
+                              </h1>
+                              <p className="text-gray mb-6">
+                                Trang không tồn tại
+                              </p>
+                              <a
+                                href="/"
+                                className="text-primary hover:text-primary/80"
+                              >
                                 Về trang chủ
                               </a>
                             </div>
