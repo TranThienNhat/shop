@@ -116,7 +116,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         collapsible
         collapsed={collapsed}
         className="bg-white shadow-lg fixed left-0 top-0 bottom-0 z-50"
-        width={250}
+        width={180}
         style={{ height: "100vh", overflow: "auto" }}
       >
         <div className="p-4 border-b border-gray-100">
@@ -137,7 +137,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         />
       </Sider>
 
-      <Layout style={{ marginLeft: collapsed ? 80 : 250, transition: "all 0.2s" }}>
+      <Layout style={{ marginLeft: collapsed ? 70 : 180, transition: "all 0.2s" }}>
         <Header className="bg-white/80 backdrop-blur-md shadow-sm px-6 flex items-center justify-between sticky top-0 z-40">
           <Button
             type="text"

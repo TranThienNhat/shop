@@ -267,7 +267,7 @@ const PurchaseReceiptFormPage: React.FC = () => {
                               <InputNumber className="w-full" min={1} />
                             </Form.Item>
                           </Col>
-                          <Col span={7}>
+                          <Col span={6}>
                             <Form.Item
                               {...restField}
                               name={[name, "unit_price"]}
