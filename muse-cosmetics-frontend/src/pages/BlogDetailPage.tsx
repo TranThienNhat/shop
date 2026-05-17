@@ -70,9 +70,26 @@ const BlogDetailPage: React.FC = () => {
         <Breadcrumb
           className="mb-8 text-[11px] uppercase tracking-[0.15em]"
           items={[
-            { title: <Link to="/" className="hover:!text-[#BC8F8F] text-[#555555]">Trang chủ</Link> },
-            { title: <Link to="/blogs" className="hover:!text-[#BC8F8F] text-[#555555]">Blog làm đẹp</Link> },
-            { title: <span className="text-[#BC8F8F] font-bold">Chi tiết</span> },
+            {
+              title: (
+                <Link to="/" className="hover:!text-[#BC8F8F] text-[#555555]">
+                  Trang chủ
+                </Link>
+              ),
+            },
+            {
+              title: (
+                <Link
+                  to="/blogs"
+                  className="hover:!text-[#BC8F8F] text-[#555555]"
+                >
+                  Blog làm đẹp
+                </Link>
+              ),
+            },
+            {
+              title: <span className="text-[#BC8F8F] font-bold">Chi tiết</span>,
+            },
           ]}
         />
 
@@ -89,9 +106,7 @@ const BlogDetailPage: React.FC = () => {
           <div className="px-2 md:px-8">
             {/* Meta Info: Sử dụng màu Primary & Gray */}
             <Space className="mb-6 flex-wrap" size="large">
-              <Tag
-                className="border-0 rounded-full px-4 m-0 uppercase text-[10px] font-bold bg-[#BC8F8F]/10 text-[#BC8F8F]"
-              >
+              <Tag className="border-0 rounded-full px-4 m-0 uppercase text-[10px] font-bold bg-[#BC8F8F]/10 text-[#BC8F8F]">
                 Linh Cosmetics
               </Tag>
               <Text className="text-[12px] text-[#555555] flex items-center gap-2">
@@ -99,7 +114,7 @@ const BlogDetailPage: React.FC = () => {
                 {new Date(blog.created_at).toLocaleDateString("vi-VN")}
               </Text>
               <Text className="text-[12px] text-[#555555] flex items-center gap-2">
-                <User size={14} className="text-[#BC8F8F]" /> 
+                <User size={14} className="text-[#BC8F8F]" />
                 <span className="uppercase tracking-tighter">Admin</span>
               </Text>
             </Space>
@@ -117,11 +132,12 @@ const BlogDetailPage: React.FC = () => {
             {/* Main Content: Tinh chỉnh Prose cho bảng màu mới */}
             <div
               className="prose prose-stone max-w-none 
-                prose-p:text-[#555555] prose-p:leading-[1.8] prose-p:text-[16px] prose-p:mb-6
-                prose-headings:font-serif prose-headings:text-[#2D2D2D]
-                prose-img:rounded-xl prose-img:shadow-sm
-                prose-strong:text-[#2D2D2D]
-                prose-blockquote:border-[#BC8F8F] prose-blockquote:bg-[#BC8F8F]/5 prose-blockquote:py-1 prose-blockquote:px-6 prose-blockquote:rounded-r-lg"
+    whitespace-pre-line
+    prose-p:text-[#555555] prose-p:leading-[1.8] prose-p:text-[16px] prose-p:mb-6
+    prose-headings:font-serif prose-headings:text-[#2D2D2D]
+    prose-img:rounded-xl prose-img:shadow-sm
+    prose-strong:text-[#2D2D2D]
+    prose-blockquote:border-[#BC8F8F] prose-blockquote:bg-[#BC8F8F]/5 prose-blockquote:py-1 prose-blockquote:px-6 prose-blockquote:rounded-r-lg"
               dangerouslySetInnerHTML={{ __html: blog.content }}
             />
 
@@ -140,9 +156,7 @@ const BlogDetailPage: React.FC = () => {
               </Link>
 
               <div className="flex items-center gap-4 bg-[#FDFBF7] px-6 py-3 rounded-full border border-[#f0ece2]">
-                <Text
-                  className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#555555]"
-                >
+                <Text className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#555555]">
                   Chia sẻ
                 </Text>
                 <div className="w-[1px] h-4 bg-[#BC8F8F]/20"></div>
