@@ -20,6 +20,7 @@ const createSlug = (str: string) => {
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "");
 };
+
 const ProductFormPage: React.FC = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
@@ -41,49 +42,48 @@ const ProductFormPage: React.FC = () => {
   }, [id]);
 
   const loadInitialData = async () => {
-  try {
-    const [cRes, bRes] = await Promise.all([
-      api.get("/categories"),
-      api.get("/brands")
-    ]);
-    
-    setCategories(cRes.data.data || []);
-    setBrands(bRes.data.data || []);
-
-    if (isEdit) {
-      const pRes = await api.get(`/products/${id}`);
+    try {
+      const [cRes, bRes] = await Promise.all([
+        api.get("/categories"),
+        api.get("/brands")
+      ]);
       
-      const product = pRes.data.data; 
+      setCategories(cRes.data.data || []);
+      setBrands(bRes.data.data || []);
 
-      if (!product) {
-        throw new Error("Sản phẩm không tồn tại");
+      if (isEdit) {
+        const pRes = await api.get(`/products/${id}`);
+        const product = pRes.data.data; 
+
+        if (!product) {
+          throw new Error("Sản phẩm không tồn tại");
+        }
+
+        const formattedImages = product.galleries?.map((g: any) => ({
+          uid: g.id,
+          name: g.image_url.split('/').pop(),
+          status: 'done',
+          url: `http://localhost:3000${g.image_url}`, 
+          thumbUrl: `http://localhost:3000${g.image_url}`,
+        })) || [];
+
+        // Đưa dữ liệu vào form
+        form.setFieldsValue({
+          name: product.name,
+          slug: product.slug,
+          description: product.description,
+          category_id: product.category_id,
+          brand_id: product.brand_id,
+          status: product.status,
+          variants: product.variants || [],
+          images: formattedImages // Hiển thị ảnh cũ trong danh sách fileList
+        });
       }
-
-      const formattedImages = product.galleries?.map((g: any) => ({
-        uid: g.id,
-        name: g.image_url.split('/').pop(),
-        status: 'done',
-        url: `http://localhost:3000${g.image_url}`, 
-        thumbUrl: `http://localhost:3000${g.image_url}`,
-      })) || [];
-
-      // Đưa dữ liệu vào form
-      form.setFieldsValue({
-        name: product.name,
-        slug: product.slug,
-        description: product.description,
-        category_id: product.category_id,
-        brand_id: product.brand_id,
-        status: product.status,
-        variants: product.variants || [],
-        images: formattedImages // Đây là field quan trọng để hiển thị ảnh cũ
-      });
+    } catch (e: any) {
+      console.error("Lỗi chi tiết:", e);
+      message.error(e.response?.data?.message || "Không thể tải dữ liệu sản phẩm");
     }
-  } catch (e: any) {
-    console.error("Lỗi chi tiết:", e);
-    message.error(e.response?.data?.message || "Không thể tải dữ liệu sản phẩm");
-  }
-};
+  };
 
   const handleSubmit = async (values: any) => {
     setLoading(true);
@@ -100,7 +100,12 @@ const ProductFormPage: React.FC = () => {
 
       if (values.images) {
         values.images.forEach((fileItem: any) => {
-          if (fileItem.originFileObj) formData.append("images", fileItem.originFileObj);
+          if (fileItem.originFileObj) {
+            formData.append("images", fileItem.originFileObj);
+          } else {
+            // Trường hợp cập nhật (isEdit) mà ảnh cũ được giữ lại, bạn có thể truyền link hoặc id ảnh cũ nếu BE yêu cầu
+            formData.append("existing_images[]", fileItem.uid || fileItem.url);
+          }
         });
       }
 
@@ -170,8 +175,26 @@ const ProductFormPage: React.FC = () => {
               </Form.Item>
             </Card>
 
-            <Card title="Bộ sưu tập ảnh" style={cardStyle} extra={<Text type="secondary">Tối đa 5 ảnh</Text>}>
-              <Form.Item name="images" valuePropName="fileList" getValueFromEvent={e => Array.isArray(e) ? e : e?.fileList}>
+            {/* BỘ SƯU TẬP ẢNH - ĐÃ THÊM LUẬT BẮT BUỘC 1 ẢNH */}
+            <Card title="Bộ sưu tập ảnh" style={cardStyle} extra={<Text type="secondary">Yêu cầu từ 1 đến 5 ảnh</Text>}>
+              <Form.Item 
+                name="images" 
+                valuePropName="fileList" 
+                getValueFromEvent={e => Array.isArray(e) ? e : e?.fileList}
+                rules={[
+                  {
+                    validator: (_, value) => {
+                      if (value && value.length > 5) {
+                        return Promise.reject(new Error("Bạn chỉ được tải lên tối đa 5 hình ảnh!"));
+                      }
+                      if (!value || value.length === 0) {
+                        return Promise.reject(new Error("Vui lòng tải lên ít nhất 1 hình ảnh sản phẩm!"));
+                      }
+                      return Promise.resolve();
+                    }
+                  }
+                ]}
+              >
                 <Upload 
                   listType="picture-card" 
                   beforeUpload={() => false} 
@@ -179,10 +202,13 @@ const ProductFormPage: React.FC = () => {
                   accept="image/*"
                   className="product-uploader"
                 >
-                  <div>
-                    <PlusOutlined />
-                    <div style={{ marginTop: 8 }}>Tải lên</div>
-                  </div>
+                  {/* Ẩn nút "Tải lên" nếu danh sách ảnh đã đạt tối đa 5 ảnh */}
+                  {form.getFieldValue("images")?.length >= 5 ? null : (
+                    <div>
+                      <PlusOutlined />
+                      <div style={{ marginTop: 8 }}>Tải lên</div>
+                    </div>
+                  )}
                 </Upload>
               </Form.Item>
             </Card>
