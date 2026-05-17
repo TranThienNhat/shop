@@ -135,7 +135,6 @@ export const update = async (req: Request, res: Response) => {
   const files = req.files as Express.Multer.File[];
 
   // Khởi tạo connection để dùng transaction (tùy thuộc vào thư viện mysql2 bạn đang dùng)
-  // Giả sử bạn đang dùng pool.promise()
   const connection = await pool.getConnection();
 
   try {
@@ -184,26 +183,35 @@ export const update = async (req: Request, res: Response) => {
       try {
         await ProductVariant.delete(deleteId);
       } catch (err: any) {
-        // Nếu dính khóa ngoại (cart_items), báo lỗi và dừng transaction
+        // Nếu dính khóa ngoại (cart_items, order_items), báo lỗi và dừng transaction
         throw new Error(
-          `Không thể xóa biến thể ID ${deleteId} vì đang có trong giỏ hàng khách hàng.`,
+          `Không thể xóa biến thể ID ${deleteId} vì đang tồn tại trong giỏ hàng hoặc đơn hàng.`,
         );
       }
     }
 
-    // --- B. XỬ LÝ UPDATE & INSERT ---
+    // --- B. XỬ LÝ UPDATE & INSERT (KHẮC PHỤC LỖI NaN TẠI ĐÂY) ---
     for (const v of incomingVariants) {
+      // Ép kiểu an toàn
+      const priceNum = Number(v.price);
+      const stockNum = Number(v.stock_qty);
+
       const variantData = {
         product_id: Number(id),
-        variant_name: v.variant_name || v.name, // Khớp với DB của bạn
-        price: Number(v.price),
-        stock_qty: Number(v.stock_qty),
+        variant_name: v.variant_name || v.name || "Mặc định", // Khớp với DB của bạn
+
+        // CỐT LÕI: Kiểm tra isNaN. Nếu dữ liệu rác/lỗi -> fallback về 0.
+        price: isNaN(priceNum) ? 0 : priceNum,
+        stock_qty: isNaN(stockNum) ? 0 : stockNum,
+
         variant_image: v.variant_image || null,
       };
 
+      // Cập nhật nếu đã có ID và nằm trong danh sách hiện tại
       if (v.id && existingIds.includes(Number(v.id))) {
         await ProductVariant.update(Number(v.id), variantData);
       } else {
+        // Tạo mới nếu chưa có ID
         await ProductVariant.create(variantData);
       }
     }
@@ -212,14 +220,14 @@ export const update = async (req: Request, res: Response) => {
     if (files && files.length > 0) {
       const oldGalleries = await Gallery.findAllByProductId(Number(id));
 
-      // Xóa ảnh vật lý
+      // Xóa ảnh vật lý khỏi ổ cứng/storage
       if (oldGalleries && oldGalleries.length > 0) {
         oldGalleries.forEach((g: any) => {
           if (typeof deleteFile === "function") deleteFile(g.image_url);
         });
       }
 
-      // Xóa trong DB và thêm mới
+      // Xóa bản ghi trong DB và thêm mới
       await Gallery.deleteByProductId(Number(id));
       const galleryPromises = files.map((file, i) => {
         return Gallery.create({
@@ -232,17 +240,77 @@ export const update = async (req: Request, res: Response) => {
       await Promise.all(galleryPromises);
     }
 
-    await connection.commit(); // Hoàn tất mọi thay đổi
-    return res.json({ message: "Cập nhật sản phẩm thành công" });
+    await connection.commit(); // Hoàn tất mọi thay đổi (Transaction thành công)
+
+    return res.json({
+      success: true,
+      message: "Cập nhật sản phẩm thành công",
+    });
   } catch (error: any) {
     await connection.rollback(); // Hủy bỏ mọi thay đổi nếu có lỗi xảy ra
-    console.error("Lỗi cập nhật:", error);
+    console.error("Lỗi cập nhật sản phẩm:", error);
+
     return res.status(500).json({
-      message: error.message || "Lỗi server",
+      success: false,
+      message: error.message || "Lỗi server trong quá trình cập nhật",
       error: error.message,
     });
   } finally {
-    connection.release(); // Giải phóng connection trả về pool
+    connection.release(); // Quan trọng: Giải phóng connection trả về pool
+  }
+};
+
+export const addVariant = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; // Lấy product_id từ URL dạng /products/:id/variants
+
+    // 1. ÉP KIỂU VÀ CHẶN NGAY LỖI NaN CỦA PRODUCT_ID
+    const productIdNum = Number(id);
+    if (isNaN(productIdNum) || productIdNum <= 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Yêu cầu thất bại: ID sản phẩm gốc không hợp lệ hoặc bị truyền lên dạng NaN!",
+      });
+    }
+
+    // 2. Kiểm tra xem sản phẩm gốc thực sự có tồn tại trong DB không
+    const product = await Product.findById(productIdNum);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Sản phẩm gốc không tồn tại",
+      });
+    }
+
+    const { variant_name, price, stock_qty, variant_image } = req.body;
+
+    // 3. Ép kiểu an toàn cho price và stock_qty như cũ
+    const priceNum = Number(price);
+    const stockNum = Number(stock_qty);
+
+    const variantData = {
+      product_id: productIdNum, // Đã bảo đảm là số chuẩn, không lo dính NaN
+      variant_name: variant_name || "Mặc định",
+      price: isNaN(priceNum) ? 0 : priceNum,
+      stock_qty: isNaN(stockNum) ? 0 : stockNum,
+      variant_image: variant_image || null,
+    };
+
+    // 4. Gọi model để lưu vào Database
+    const newVariant = await ProductVariant.create(variantData);
+
+    return res.status(201).json({
+      success: true,
+      message: "Thêm biến thể mới thành công!",
+      data: newVariant,
+    });
+  } catch (error: any) {
+    console.error(">>> Lỗi khi thêm biến thể đơn lẻ:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Lỗi hệ thống khi thêm biến thể",
+    });
   }
 };
 

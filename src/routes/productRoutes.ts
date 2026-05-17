@@ -6,6 +6,7 @@ import {
   update,
   remove,
   allVariants,
+  addVariant,
 } from "../controllers/productController";
 import { authenticate, requireAdmin } from "../middlewares/authMiddleware";
 import { uploadProduct } from "../middlewares/uploadMiddleware";
@@ -36,6 +37,14 @@ router.post(
  * CẬP NHẬT SẢN PHẨM
  * Tương tự như tạo mới, cho phép gửi kèm ảnh mới để thay thế gallery cũ
  */
+router.put(
+  "/:id/variants",
+  authenticate,
+  requireAdmin,
+  uploadProduct.array("images", 10),
+  addVariant,
+);
+
 router.put(
   "/:id",
   authenticate,

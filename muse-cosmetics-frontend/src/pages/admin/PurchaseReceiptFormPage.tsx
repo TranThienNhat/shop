@@ -11,17 +11,14 @@ import {
   Row,
   Col,
   Space,
-  Divider,
-  Tooltip,
   Modal,
+  Upload,
 } from "antd";
 import {
   ArrowLeftOutlined,
   PlusOutlined,
   DeleteOutlined,
   SaveOutlined,
-  ShoppingCartOutlined,
-  InfoCircleOutlined,
   PlusSquareOutlined,
   AppstoreAddOutlined,
 } from "@ant-design/icons";
@@ -30,6 +27,19 @@ import api from "../../utils/api";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+
+const createSlug = (str: string) => {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, "d")
+    .replace(/([^0-9a-z-\s])/g, "")
+    .replace(/(\s+)/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
 
 const PurchaseReceiptFormPage: React.FC = () => {
   const [form] = Form.useForm();
@@ -42,12 +52,14 @@ const PurchaseReceiptFormPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [variants, setVariants] = useState([]);
-  const [products, setProducts] = useState([]); // Danh sách SP để thêm biến thể
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
 
-  // Modal states
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
 
+  // Shadow & Border Style đồng nhất hoàn toàn với ProductFormPage
   const cardStyle = {
     borderRadius: "12px",
     boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
@@ -61,27 +73,33 @@ const PurchaseReceiptFormPage: React.FC = () => {
   const loadInitialData = async () => {
     setLoading(true);
     try {
-      const [sRes, vRes, pRes] = await Promise.all([
+      const [sRes, vRes, pRes, cRes, bRes] = await Promise.all([
         api.get("/suppliers?status=active"),
         api.get("/products/purchase/all-variants"),
-        api.get("/products"), // Lấy danh sách sản phẩm (không phải biến thể)
+        api.get("/products"),
+        api.get("/categories"),
+        api.get("/brands"),
       ]);
 
-      setSuppliers(sRes.data.data || []);
-      setVariants(vRes.data.data || []);
-      setProducts(pRes.data.data || []);
+      setSuppliers(sRes.data?.data || []);
+      setVariants(vRes.data?.data || []);
+      setProducts(pRes.data?.data || []);
+      setCategories(cRes.data?.data || []);
+      setBrands(bRes.data?.data || []);
 
       if (isEdit) {
         const res = await api.get(`/purchase-receipts/${id}`);
         const data = res.data.data;
+
         form.setFieldsValue({
           supplier_id: data.supplier_id,
           note: data.note,
-          items: data.details.map((d: any) => ({
-            product_variant_id: d.product_variant_id,
-            quantity: d.quantity,
-            unit_price: d.cost_price,
-          })),
+          items:
+            data.details?.map((d: any) => ({
+              product_variant_id: d.variant_id,
+              quantity: d.quantity,
+              unit_price: Math.round(d.unit_price), // Loại bỏ phần thập phân nếu dữ liệu DB trả về dạng float
+            })) || [],
         });
       }
     } catch (e: any) {
@@ -91,38 +109,49 @@ const PurchaseReceiptFormPage: React.FC = () => {
     }
   };
 
-  // Hàm tạo nhanh Sản phẩm mới (kèm 1 biến thể mặc định)
   const handleQuickProduct = async (values: any) => {
     try {
-      const payload = {
-        name: values.name,
-        category_id: values.category_id, // Nên có mặc định hoặc chọn
-        status: "active",
-        variants: [
-          {
-            variant_name: values.variant_name || "Mặc định",
-            price: values.price || 0,
-            stock_qty: 0,
-          },
-        ],
-      };
-      await api.post("/products", payload);
-      message.success("Tạo sản phẩm mới thành công");
+      const formData = new FormData();
+      formData.append("name", values.name);
+      formData.append("slug", createSlug(values.name));
+      formData.append("category_id", values.category_id || "");
+      formData.append("brand_id", values.brand_id || "");
+      formData.append("status", "active");
+
+      const defaultVariants = [
+        {
+          variant_name: values.variant_name || "Mặc định",
+          price: 0,
+          stock_qty: 0,
+        },
+      ];
+      formData.append("variants", JSON.stringify(defaultVariants));
+
+      if (values.images) {
+        values.images.forEach((fileItem: any) => {
+          if (fileItem.originFileObj) {
+            formData.append("images", fileItem.originFileObj);
+          }
+        });
+      }
+
+      const config = { headers: { "Content-Type": "multipart/form-data" } };
+      await api.post("/products", formData, config);
+
+      message.success("Tạo nhanh sản phẩm mới thành công");
       setIsProductModalOpen(false);
       quickProductForm.resetFields();
-      loadInitialData(); // Refresh danh sách để chọn
+      loadInitialData();
     } catch (e) {
-      message.error("Lỗi khi tạo sản phẩm");
+      message.error("Lỗi khi tạo nhanh sản phẩm");
     }
   };
 
-  // Hàm tạo nhanh Biến thể mới cho sản phẩm có sẵn
   const handleQuickVariant = async (values: any) => {
     try {
-      // Giả sử API update sản phẩm hỗ trợ thêm biến thể hoặc có API riêng
-      await api.post(`/products/${values.product_id}/variants`, {
+      await api.put(`/products/${values.product_id}/variants`, {
         variant_name: values.variant_name,
-        price: values.price || 0,
+        price: 0,
         stock_qty: 0,
       });
       message.success("Thêm biến thể mới thành công");
@@ -143,20 +172,20 @@ const PurchaseReceiptFormPage: React.FC = () => {
         items: values.items.map((item: any) => ({
           product_variant_id: item.product_variant_id,
           quantity: item.quantity,
-          cost_price: item.unit_price,
+          cost_price: item.unit_price, // Đảm bảo gửi số nguyên lên server
         })),
       };
 
       if (isEdit) {
         await api.put(`/purchase-receipts/${id}`, payload);
-        message.success("Cập nhật thành công");
+        message.success("Cập nhật phiếu nhập thành công");
       } else {
         await api.post("/purchase-receipts", payload);
-        message.success("Nhập hàng thành công");
+        message.success("Tạo phiếu nhập hàng thành công");
       }
       navigate("/admin/products");
     } catch (e: any) {
-      message.error("Lỗi khi lưu phiếu");
+      message.error("Lỗi khi lưu phiếu nhập");
     } finally {
       setLoading(false);
     }
@@ -166,85 +195,95 @@ const PurchaseReceiptFormPage: React.FC = () => {
   const totalAmount =
     itemsWatch?.reduce(
       (acc: number, cur: any) =>
-        acc + Number(cur?.quantity || 0) * Number(cur?.unit_price || 0),
+        acc + Number(cur?.quantity || 0) * Math.round(Number(cur?.unit_price || 0)),
       0,
     ) || 0;
 
   return (
-    <div className="p-4">
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        initialValues={{ items: [{ quantity: 1, unit_price: 0 }] }}
-      >
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8 sticky top-0 z-10 bg-gray-50/90 backdrop-blur-md py-4">
-          <Space size="middle">
-            <Button
-              shape="circle"
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate(-1)}
-            />
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={handleSubmit}
+      initialValues={{ items: [{ quantity: 1, unit_price: 0 }] }}
+      autoComplete="off"
+    >
+      {/* Sticky Header - Đồng bộ 100% hiệu ứng chuyển động và cấu trúc văn bản */}
+      <div className="flex justify-between items-center mb-8 sticky top-0 z-10 bg-gray-50/80 backdrop-blur-md py-4">
+        <Space size="middle">
+          <Button
+            shape="circle"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate(-1)}
+            className="hover:scale-110 transition-transform"
+          />
+          <div>
             <Title level={3} style={{ margin: 0 }}>
-              {isEdit ? "Chỉnh sửa" : "Nhập hàng"}
+              {isEdit ? "Chỉnh sửa" : "Tạo mới"} phiếu nhập hàng
             </Title>
-          </Space>
-          <Space>
-            <Button
-              icon={<PlusSquareOutlined />}
-              onClick={() => setIsProductModalOpen(true)}
-            >
-              Tạo SP mới
-            </Button>
-            <Button
-              icon={<AppstoreAddOutlined />}
-              onClick={() => setIsVariantModalOpen(true)}
-            >
-              Thêm biến thể
-            </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              icon={<SaveOutlined />}
-              className="bg-blue-600 rounded-lg border-none px-8"
-            >
-              Xác nhận
-            </Button>
-          </Space>
-        </div>
+            <Text type="secondary">
+              {isEdit
+                ? `ID: ${id}`
+                : "Nhập kho sản phẩm và quản lý nhà cung cấp"}
+            </Text>
+          </div>
+        </Space>
 
-        <Row gutter={[24, 24]}>
-          <Col xs={24} lg={16}>
-            <Card
-              title={
-                <Space>
-                  <ShoppingCartOutlined />
-                  <span>Danh sách hàng nhập</span>
-                </Space>
-              }
-              style={cardStyle}
-            >
+        <Space size="middle">
+          <Button
+            icon={<PlusSquareOutlined />}
+            onClick={() => setIsProductModalOpen(true)}
+            className="border-[#BC8F8F] text-[#BC8F8F] hover:bg-[#BC8F8F]/5 hover:border-[#BC8F8F] font-medium rounded-lg h-10 transition-colors"
+          >
+            Tạo SP mới
+          </Button>
+
+          <Button
+            icon={<AppstoreAddOutlined />}
+            onClick={() => setIsVariantModalOpen(true)}
+            className="border-[#BC8F8F] text-[#BC8F8F] hover:bg-[#BC8F8F]/5 hover:border-[#BC8F8F] font-medium rounded-lg h-10 transition-colors"
+          >
+            Thêm biến thể
+          </Button>
+
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={loading}
+            size="large"
+            icon={<SaveOutlined />}
+            className="bg-[#BC8F8F] hover:bg-[#a67c7c] text-white font-semibold rounded-lg px-8 shadow-md border-0 h-10 flex items-center justify-center transition-all"
+          >
+            Lưu phiếu nhập
+          </Button>
+        </Space>
+      </div>
+
+      <Row gutter={[24, 24]}>
+        {/* CỘT TRÁI: DANH SÁCH HÀNG HOÁ */}
+        <Col xs={24} lg={16}>
+          <Space direction="vertical" size="large" className="w-full">
+            <Card title="Danh sách hàng nhập" style={cardStyle}>
               <Form.List name="items">
                 {(fields, { add, remove }) => (
                   <>
                     {fields.map(({ key, name, ...restField }) => (
                       <div
                         key={key}
-                        className="relative mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200"
+                        className="relative mb-4 p-6 bg-gray-50 rounded-xl border border-dashed border-gray-200 hover:border-blue-300 transition-colors"
                       >
-                        <Row gutter={16}>
-                          <Col span={12}>
+                        <Row gutter={16} align="bottom">
+                          <Col xs={24} md={11}>
                             <Form.Item
                               {...restField}
                               name={[name, "product_variant_id"]}
                               label="Sản phẩm & Biến thể"
-                              rules={[{ required: true }]}
+                              rules={[
+                                { required: true, message: "Vui lòng chọn!" },
+                              ]}
                             >
                               <Select
                                 showSearch
-                                placeholder="Tìm theo Tên..."
+                                placeholder="Tìm kiếm sản phẩm..."
                                 options={variants.map((v: any) => ({
                                   label: `${v.product_name} - ${v.variant_name}`,
                                   value: v.id,
@@ -257,44 +296,54 @@ const PurchaseReceiptFormPage: React.FC = () => {
                               />
                             </Form.Item>
                           </Col>
-                          <Col span={4}>
+                          <Col xs={12} md={4}>
                             <Form.Item
                               {...restField}
                               name={[name, "quantity"]}
-                              label="SL"
-                              rules={[{ required: true }]}
+                              label="Số lượng"
+                              rules={[{ required: true, message: "Nhập SL" }]}
                             >
-                              <InputNumber className="w-full" min={1} />
+                              <InputNumber
+                                className="w-full"
+                                min={1}
+                                precision={0}
+                              />
                             </Form.Item>
                           </Col>
-                          <Col span={6}>
+                          <Col xs={12} md={6}>
                             <Form.Item
                               {...restField}
                               name={[name, "unit_price"]}
-                              label="Giá nhập"
-                              rules={[{ required: true }]}
+                              label="Giá nhập / SP"
+                              rules={[{ required: true, message: "Nhập giá" }]}
                             >
                               <InputNumber
                                 className="w-full"
                                 min={0}
+                                precision={0} // Ép buộc không cho nhập số thập phân
                                 formatter={(value) =>
                                   `${value}`.replace(
                                     /\B(?=(\d{3})+(?!\d))/g,
                                     ",",
                                   )
                                 }
+                                parser={(value) =>
+                                  value!.replace(/\$\s?|(,*)/g, "")
+                                }
                                 addonAfter="đ"
                               />
                             </Form.Item>
                           </Col>
-                          <Col span={1}>
+                          <Col xs={24} md={3}>
                             <Button
                               type="text"
                               danger
                               icon={<DeleteOutlined />}
                               onClick={() => remove(name)}
-                              style={{ marginTop: "30px" }}
-                            />
+                              className="mb-6"
+                            >
+                              Xóa
+                            </Button>
                           </Col>
                         </Row>
                       </div>
@@ -304,116 +353,213 @@ const PurchaseReceiptFormPage: React.FC = () => {
                       onClick={() => add({ quantity: 1, unit_price: 0 })}
                       block
                       icon={<PlusOutlined />}
+                      className="h-12 border-2 hover:border-blue-400 rounded-lg"
                     >
-                      Thêm dòng
+                      Thêm dòng sản phẩm mới
                     </Button>
                   </>
                 )}
               </Form.List>
             </Card>
-          </Col>
+          </Space>
+        </Col>
 
-          <Col xs={24} lg={8}>
-            <Space direction="vertical" size="large" className="w-full">
-              <Card title="Thông tin chung" style={cardStyle}>
-                <Form.Item
-                  name="supplier_id"
-                  label="Nhà cung cấp"
-                  rules={[{ required: true }]}
-                >
-                  <Select
-                    options={suppliers.map((s: any) => ({
-                      label: s.name,
-                      value: s.id,
-                    }))}
-                  />
-                </Form.Item>
-                <Form.Item name="note" label="Ghi chú">
-                  <TextArea rows={3} />
-                </Form.Item>
-              </Card>
+        {/* CỘT PHẢI: THÔNG TIN CHUNG & TỔNG TIỀN */}
+        <Col xs={24} lg={8}>
+          <Space direction="vertical" size="large" className="w-full">
+            <Card title="Thông tin chung" style={cardStyle}>
+              <Form.Item
+                name="supplier_id"
+                label="Nhà cung cấp"
+                rules={[{ required: true, message: "Vui lòng chọn NCC!" }]}
+              >
+                <Select
+                  size="large"
+                  showSearch
+                  placeholder="Chọn nhà cung cấp"
+                  options={suppliers.map((s: any) => ({
+                    label: s.name,
+                    value: s.id,
+                  }))}
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                />
+              </Form.Item>
+              <Form.Item name="note" label="Ghi chú">
+                <TextArea
+                  rows={4}
+                  placeholder="Ghi chú thêm về đơn nhập hàng..."
+                />
+              </Form.Item>
+            </Card>
 
-              <Card style={cardStyle} className="bg-blue-50/30">
-                <div className="flex justify-between items-center">
-                  <Text strong>TỔNG TIỀN:</Text>
-                  <Text strong className="text-2xl text-blue-600">
-                    {totalAmount.toLocaleString()} đ
-                  </Text>
-                </div>
-              </Card>
-            </Space>
-          </Col>
-        </Row>
-      </Form>
+            <Card title="Thanh toán" style={cardStyle}>
+              <div className="flex justify-between items-center py-2">
+                <Text type="secondary">TỔNG TIỀN:</Text>
+                <Text strong className="text-xl text-blue-600">
+                  {/* Sử dụng định dạng mặc định cho tiền tệ vi-VN, loại bỏ .00 */}
+                  {Math.round(totalAmount).toLocaleString("vi-VN")} đ
+                </Text>
+              </div>
+            </Card>
+          </Space>
+        </Col>
+      </Row>
 
-      {/* MODAL TẠO NHANH SẢN PHẨM */}
+      {/* MODAL 1: TẠO NHANH SẢN PHẨM MỚI */}
       <Modal
-        title="Tạo nhanh sản phẩm mới"
+        title={
+          <Space>
+            <PlusSquareOutlined className="text-blue-500" />
+            <span>Tạo nhanh Sản phẩm mới</span>
+          </Space>
+        }
         open={isProductModalOpen}
         onCancel={() => setIsProductModalOpen(false)}
         onOk={() => quickProductForm.submit()}
+        okText="Tạo sản phẩm"
+        cancelText="Hủy"
+        destroyOnClose
       >
         <Form
           form={quickProductForm}
           layout="vertical"
           onFinish={handleQuickProduct}
+          className="mt-4"
         >
           <Form.Item
             name="name"
             label="Tên sản phẩm"
-            rules={[{ required: true }]}
+            rules={[{ required: true, message: "Vui lòng nhập tên sản phẩm!" }]}
           >
-            <Input />
+            <Input placeholder="Ví dụ: Nước hoa Chanel No.5" />
           </Form.Item>
+
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                name="variant_name"
-                label="Tên biến thể"
-                initialValue="Mặc định"
+                name="category_id"
+                label="Danh mục"
+                rules={[{ required: true, message: "Vui lòng chọn danh mục!" }]}
               >
-                <Input />
+                <Select
+                  showSearch
+                  placeholder="Chọn danh mục"
+                  options={categories.map((c: any) => ({
+                    label: c.name,
+                    value: c.id,
+                  }))}
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="brand_id" label="Thương hiệu">
+                <Select
+                  showSearch
+                  placeholder="Chọn thương hiệu"
+                  options={brands.map((b: any) => ({
+                    label: b.name,
+                    value: b.id,
+                  }))}
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                />
               </Form.Item>
             </Col>
           </Row>
+
+          <Form.Item
+            name="variant_name"
+            label="Tên biến thể"
+            initialValue="Mặc định"
+            rules={[{ required: true, message: "Vui lòng nhập tên biến thể!" }]}
+          >
+            <Input placeholder="Ví dụ: 50ml, Màu Đỏ hoặc Mặc định" />
+          </Form.Item>
+
+          <Form.Item
+            name="images"
+            valuePropName="fileList"
+            getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
+          >
+            <Upload
+              listType="picture-card"
+              beforeUpload={() => false}
+              multiple
+              accept="image/*"
+            >
+              <div>
+                <PlusOutlined />
+                <div style={{ marginTop: 8 }}>Tải ảnh</div>
+              </div>
+            </Upload>
+          </Form.Item>
         </Form>
       </Modal>
 
-      {/* MODAL THÊM BIẾN THỂ CHO SẢN PHẨM CÓ SẴN */}
+      {/* MODAL 2: THÊM BIẾN THỂ CHO SẢN PHẨM ĐÃ CÓ */}
       <Modal
-        title="Thêm biến thể mới"
+        title={
+          <Space>
+            <AppstoreAddOutlined className="text-green-500" />
+            <span>Thêm biến thể mới</span>
+          </Space>
+        }
         open={isVariantModalOpen}
         onCancel={() => setIsVariantModalOpen(false)}
         onOk={() => quickVariantForm.submit()}
+        okText="Thêm biến thể"
+        cancelText="Hủy"
+        destroyOnClose
       >
         <Form
           form={quickVariantForm}
           layout="vertical"
           onFinish={handleQuickVariant}
+          className="mt-4"
         >
           <Form.Item
             name="product_id"
             label="Chọn sản phẩm gốc"
-            rules={[{ required: true }]}
+            rules={[{ required: true, message: "Vui lòng chọn sản phẩm gốc!" }]}
           >
             <Select
               showSearch
+              placeholder="Gõ để tìm kiếm..."
               options={products.map((p: any) => ({
                 label: p.name,
                 value: p.id,
-              }))}
+                  }))}
+              filterOption={(input, option) =>
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
             />
           </Form.Item>
           <Form.Item
             name="variant_name"
-            label="Tên biến thể (Dung tích/Màu sắc...)"
-            rules={[{ required: true }]}
+            label="Tên phân loại (Size/Màu/Dung tích)"
+            rules={[
+              { required: true, message: "Vui lòng nhập tên phân loại!" },
+            ]}
           >
-            <Input placeholder="Ví dụ: 50ml, Màu Đỏ..." />
+            <Input placeholder="Ví dụ: 100ml, Màu Xanh dương..." />
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </Form>
   );
 };
 
