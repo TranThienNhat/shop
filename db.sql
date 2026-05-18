@@ -1,15 +1,19 @@
-CREATE DATABASE IF NOT EXISTS mypham_db;
-USE mypham_db;
 
-CREATE TABLE `brands` (
+
+DROP TABLE IF EXISTS `blogs`;
+
+CREATE TABLE `blogs` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL,
+  `title` varchar(255) NOT NULL,
   `slug` varchar(255) NOT NULL,
-  `image_url` varchar(255) DEFAULT NULL,
-  `description` text,
+  `cover_image` varchar(255) DEFAULT NULL,
+  `content` longtext NOT NULL,
+  `author_id` bigint DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `slug` (`slug`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  KEY `author_id` (`author_id`),
+  CONSTRAINT `blogs_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `cart_items` (
   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -126,14 +130,16 @@ CREATE TABLE `product_galleries` (
 CREATE TABLE `product_variants` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `product_id` bigint NOT NULL,
+  `sku` varchar(100) DEFAULT NULL,
   `variant_name` varchar(255) DEFAULT NULL,
   `price` decimal(15,2) NOT NULL,
   `stock_qty` int DEFAULT '0',
   `variant_image` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `sku` (`sku`),
   KEY `product_id` (`product_id`),
   CONSTRAINT `product_variants_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `products` (
   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -150,7 +156,33 @@ CREATE TABLE `products` (
   KEY `brand_id` (`brand_id`),
   CONSTRAINT `products_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`),
   CONSTRAINT `products_ibfk_2` FOREIGN KEY (`brand_id`) REFERENCES `brands` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `purchase_receipt_details` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `receipt_id` bigint NOT NULL,
+  `variant_id` bigint NOT NULL COMMENT 'Liên kết đến biến thể cụ thể',
+  `quantity` int NOT NULL,
+  `unit_price` decimal(15,2) NOT NULL COMMENT 'Giá nhập',
+  PRIMARY KEY (`id`),
+  KEY `receipt_id` (`receipt_id`),
+  KEY `variant_id` (`variant_id`),
+  CONSTRAINT `purchase_receipt_details_ibfk_1` FOREIGN KEY (`receipt_id`) REFERENCES `purchase_receipts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `purchase_receipt_details_ibfk_2` FOREIGN KEY (`variant_id`) REFERENCES `product_variants` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `purchase_receipts` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `supplier_id` bigint NOT NULL COMMENT 'Nhà cung cấp',
+  `user_id` bigint NOT NULL COMMENT 'Người lập phiếu/Người nhập hàng',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `note` text,
+  PRIMARY KEY (`id`),
+  KEY `supplier_id` (`supplier_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `purchase_receipts_ibfk_1` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`),
+  CONSTRAINT `purchase_receipts_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `reviews` (
   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -171,32 +203,6 @@ CREATE TABLE `reviews` (
   CONSTRAINT `reviews_chk_1` CHECK ((`rating` between 1 and 5))
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `users` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `phone` varchar(20) DEFAULT NULL,
-  `role` enum('user','admin') DEFAULT 'user',
-  `is_active` tinyint DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE `blogs` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) NOT NULL,
-  `slug` varchar(255) NOT NULL,
-  `cover_image` varchar(255) DEFAULT NULL,
-  `content` longtext NOT NULL,
-  `author_id` bigint DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `author_id` (`author_id`),
-  CONSTRAINT `blogs_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 CREATE TABLE `suppliers` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL COMMENT 'Tên công ty/nhà cung cấp',
@@ -209,30 +215,17 @@ CREATE TABLE `suppliers` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `purchase_receipts` (
+CREATE TABLE `users` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `supplier_id` bigint NOT NULL COMMENT 'Nhà cung cấp',
-  `user_id` bigint NOT NULL COMMENT 'Người lập phiếu/Người nhập hàng',
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `role` enum('user','admin') DEFAULT 'user',
+  `is_active` tinyint DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `note` text,
   PRIMARY KEY (`id`),
-  KEY `supplier_id` (`supplier_id`),
-  KEY `user_id` (`user_id`),
-  CONSTRAINT `purchase_receipts_ibfk_1` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`),
-  CONSTRAINT `purchase_receipts_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE `purchase_receipt_details` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `receipt_id` bigint NOT NULL,
-  `variant_id` bigint NOT NULL COMMENT 'Liên kết đến biến thể cụ thể',
-  `quantity` int NOT NULL,
-  `unit_price` decimal(15,2) NOT NULL COMMENT 'Giá nhập',
-  PRIMARY KEY (`id`),
-  KEY `receipt_id` (`receipt_id`),
-  KEY `variant_id` (`variant_id`),
-  CONSTRAINT `purchase_receipt_details_ibfk_1` FOREIGN KEY (`receipt_id`) REFERENCES `purchase_receipts` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `purchase_receipt_details_ibfk_2` FOREIGN KEY (`variant_id`) REFERENCES `product_variants` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
