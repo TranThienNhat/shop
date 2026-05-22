@@ -14,7 +14,7 @@ router.post("/checkout", authenticate, checkout);
 router.get("/my-orders", authenticate, getMyOrders);
 
 // Admin routes
-router.get("/", authenticate, requireAdmin, getAllOrders);
+router.get("/", authenticate, getAllOrders);
 router.put("/:id", authenticate, updateOrderStatus);
 
 export default router;

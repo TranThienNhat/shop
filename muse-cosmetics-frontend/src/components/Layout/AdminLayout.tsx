@@ -6,7 +6,6 @@ import {
   Typography,
   Dropdown,
   Space,
-  Tooltip,
   Breadcrumb,
 } from "antd";
 import { Link, useLocation } from "react-router-dom";
@@ -40,16 +39,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
+  // PHÂN QUYỀN MENU TRONG SIDEBAR
   const menuItems = [
+    // --- 1. Các menu CHUNG (Admin & Staff đều thấy) ---
     {
       key: "/admin",
       icon: <DashboardOutlined />,
       label: <Link to="/admin">Dashboard</Link>,
-    },
-    {
-      key: "/admin/products",
-      icon: <ShoppingOutlined />,
-      label: <Link to="/admin/products">Sản phẩm</Link>,
     },
     {
       key: "/admin/categories",
@@ -57,9 +53,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: <Link to="/admin/categories">Danh mục</Link>,
     },
     {
-      key: "/admin/brands",
-      icon: <BranchesOutlined />,
-      label: <Link to="/admin/brands">Thương hiệu</Link>,
+      key: "/admin/orders",
+      icon: <ShoppingCartOutlined />,
+      label: <Link to="/admin/orders">Đơn hàng</Link>,
     },
     {
       key: "/admin/blogs",
@@ -67,30 +63,41 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: <Link to="/admin/blogs">Bài viết Blog</Link>,
     },
     {
-      key: "/admin/suppliers",
-      icon: <TruckOutlined />,
-      label: <Link to="/admin/suppliers">Nhà cung cấp</Link>,
-    },
-    {
       key: "/admin/purchases",
       icon: <ImportOutlined />,
       label: <Link to="/admin/purchases">Nhập hàng kho</Link>,
     },
-    {
-      key: "/admin/coupons",
-      icon: <GiftOutlined />,
-      label: <Link to="/admin/coupons">Mã giảm giá</Link>,
-    },
-    {
-      key: "/admin/orders",
-      icon: <ShoppingCartOutlined />,
-      label: <Link to="/admin/orders">Đơn hàng</Link>,
-    },
-    {
-      key: "/admin/users",
-      icon: <UserOutlined />,
-      label: <Link to="/admin/users">Người dùng</Link>,
-    },
+
+    // --- 2. Các menu RIÊNG (Chỉ Admin mới thấy) ---
+    ...(user?.role === "admin"
+      ? [
+          {
+            key: "/admin/products",
+            icon: <ShoppingOutlined />,
+            label: <Link to="/admin/products">Sản phẩm</Link>,
+          },
+          {
+            key: "/admin/brands",
+            icon: <BranchesOutlined />,
+            label: <Link to="/admin/brands">Thương hiệu</Link>,
+          },
+          {
+            key: "/admin/suppliers",
+            icon: <TruckOutlined />,
+            label: <Link to="/admin/suppliers">Nhà cung cấp</Link>,
+          },
+          {
+            key: "/admin/coupons",
+            icon: <GiftOutlined />,
+            label: <Link to="/admin/coupons">Mã giảm giá</Link>,
+          },
+          {
+            key: "/admin/users",
+            icon: <UserOutlined />,
+            label: <Link to="/admin/users">Người dùng</Link>,
+          },
+        ]
+      : []),
   ];
 
   const userMenuItems = [
@@ -125,7 +132,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <span className="text-white font-bold text-sm">L</span>
             </div>
             {!collapsed && (
-              <Title level={5} className="!mb-0 !text-[#2D2D2D]">Linh Admin</Title>
+              <Title level={5} className="!mb-0 !text-[#2D2D2D]">
+                {user?.role === "admin" ? "Linh Admin" : "Linh Staff"}
+              </Title>
             )}
           </Link>
         </div>
@@ -137,7 +146,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         />
       </Sider>
 
-      <Layout style={{ marginLeft: collapsed ? 70 : 180, transition: "all 0.2s" }}>
+      <Layout
+        style={{ marginLeft: collapsed ? 70 : 180, transition: "all 0.2s" }}
+      >
         <Header className="bg-white/80 backdrop-blur-md shadow-sm px-6 flex items-center justify-between sticky top-0 z-40">
           <Button
             type="text"
@@ -147,7 +158,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           />
           <Space size="large">
             <Dropdown menu={{ items: userMenuItems }} trigger={["click"]}>
-              <Button type="text" className="flex items-center gap-2 font-medium">
+              <Button
+                type="text"
+                className="flex items-center gap-2 font-medium"
+              >
                 <UserOutlined /> {user?.name}
               </Button>
             </Dropdown>
@@ -157,7 +171,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <Content className="p-8 bg-[#FDFBF7]">
           <div className="mb-6">
             <Breadcrumb>
-              <Breadcrumb.Item><HomeOutlined /></Breadcrumb.Item>
+              <Breadcrumb.Item>
+                <HomeOutlined />
+              </Breadcrumb.Item>
               <Breadcrumb.Item>Admin Panel</Breadcrumb.Item>
               <Breadcrumb.Item className="capitalize">
                 {location.pathname.split("/").pop()?.replace("-", " ")}

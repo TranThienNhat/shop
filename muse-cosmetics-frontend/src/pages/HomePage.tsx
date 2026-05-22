@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Row, Col, Card, Button, Typography, Carousel, Spin } from "antd";
 import { Link } from "react-router-dom";
-import { ArrowRight, Star, Headphones, Truck } from "lucide-react"; 
+import { ArrowRight, Star, Headphones, Truck } from "lucide-react";
 import api from "../utils/api";
 import { getImageUrl, formatCurrency } from "../utils/helpers";
 
@@ -13,13 +13,10 @@ const HomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // 1. HARDCODE 5 ẢNH BANNER
   const showcaseImages = [
-    "D:\shop\muse-cosmetics-frontend\src\album\banner1.jpg",
-    "https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=1974&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1612817288484-6f916006741a?q=80&w=2070&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?q=80&w=1976&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1620916566398-39f1143f7c0e?q=80&w=1974&auto=format&fit=crop"
+    getImageUrl("/uploads/blogs/blogs-1778406595811-411473625.png"),
+    getImageUrl("/uploads/blogs/blogs-1778406595811-411473625.png"),
+    getImageUrl("/uploads/blogs/blogs-1778406595811-411473625.png"),
   ];
 
   useEffect(() => {
@@ -44,13 +41,15 @@ const HomePage: React.FC = () => {
     {
       title: "Bộ sưu tập mới",
       subtitle: "Khám phá vẻ đẹp tự nhiên",
-      description: "Những sản phẩm mỹ phẩm cao cấp được tuyển chọn kỹ lưỡng, đánh thức vẻ đẹp thuần khiết của bạn.",
+      description:
+        "Những sản phẩm mỹ phẩm cao cấp được tuyển chọn kỹ lưỡng, đánh thức vẻ đẹp thuần khiết của bạn.",
       cta: "Khám phá ngay",
     },
     {
       title: "Chăm sóc da chuyên sâu",
       subtitle: "Công nghệ tiên tiến",
-      description: "Dòng sản phẩm chăm sóc da với thành phần tự nhiên, an toàn và lành tính cho mọi loại da.",
+      description:
+        "Dòng sản phẩm chăm sóc da với thành phần tự nhiên, an toàn và lành tính cho mọi loại da.",
       cta: "Xem chi tiết",
     },
   ];
@@ -71,7 +70,10 @@ const HomePage: React.FC = () => {
                           <Text className="text-primary font-bold uppercase tracking-[0.2em] text-xs mb-3 block">
                             {slide.subtitle}
                           </Text>
-                          <Title level={1} className="!text-charcoal !mb-4 !font-serif !text-4xl md:!text-5xl leading-tight">
+                          <Title
+                            level={1}
+                            className="!text-charcoal !mb-4 !font-serif !text-4xl md:!text-5xl leading-tight"
+                          >
                             {slide.title}
                           </Title>
                           <Paragraph className="text-lg text-gray mb-8 italic font-serif leading-relaxed">
@@ -79,12 +81,16 @@ const HomePage: React.FC = () => {
                           </Paragraph>
                         </div>
                         <Link to="/products">
-                          <Button 
-                            type="primary" 
-                            size="large" 
+                          <Button
+                            type="primary"
+                            size="large"
                             className="bg-primary border-primary h-12 px-8 rounded-lg text-base font-medium shadow-sm hover:!bg-primary/90 flex items-center gap-2 group"
                           >
-                            {slide.cta} <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                            {slide.cta}{" "}
+                            <ArrowRight
+                              size={18}
+                              className="group-hover:translate-x-1 transition-transform"
+                            />
                           </Button>
                         </Link>
                       </div>
@@ -94,23 +100,39 @@ const HomePage: React.FC = () => {
                     <Col xs={24} lg={12} className="hidden lg:block">
                       <div className="relative group p-4">
                         <div className="absolute inset-0 bg-primary/5 rounded-3xl blur-xl group-hover:bg-primary/10 transition-all duration-700"></div>
-                        <div className="relative h-[450px] overflow-hidden rounded-2xl shadow-lg border border-white/50">
-                          <Carousel autoplay autoplaySpeed={4000} effect="fade" dots={false}>
+
+                        {/* Container chính của Banner: Khóa cứng chiều cao và ẩn phần tràn (overflow-hidden) */}
+                        <div className="relative h-[450px] w-full overflow-hidden rounded-2xl shadow-lg border border-white/50 bg-gray/5">
+                          <Carousel
+                            autoplay
+                            autoplaySpeed={4000}
+                            effect="fade"
+                            dots={false}
+                          >
                             {showcaseImages.map((img, i) => (
-                              <div key={i} className="h-[450px]">
-                                <img 
-                                  src={img} 
-                                  alt="Linh Showcase" 
-                                  className="w-full h-full object-cover scale-105"
+                              <div
+                                key={i}
+                                className="relative h-[450px] w-full"
+                              >
+                                {/* Dùng absolute, inset-0, object-cover để ảnh luôn bao phủ toàn bộ container mà không bị méo tỉ lệ */}
+                                <img
+                                  src={img}
+                                  alt={`Banner Linh Cosmetics ${i + 1}`}
+                                  className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 hover:scale-105"
                                 />
                               </div>
                             ))}
                           </Carousel>
                         </div>
+
                         {/* Decorative Tag */}
                         <div className="absolute bottom-10 -left-6 bg-white p-5 rounded-xl shadow-lg border border-gray/10">
-                          <Text className="text-[10px] uppercase font-bold tracking-widest text-primary block mb-1">Authentic</Text>
-                          <Text className="font-serif italic text-charcoal">Linh Cosmetics ✨</Text>
+                          <Text className="text-[10px] uppercase font-bold tracking-widest text-primary block mb-1">
+                            Authentic
+                          </Text>
+                          <Text className="font-serif italic text-charcoal">
+                            Linh Cosmetics ✨
+                          </Text>
                         </div>
                       </div>
                     </Col>
@@ -127,17 +149,33 @@ const HomePage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
           <Row gutter={[32, 32]}>
             {[
-              { icon: <Star size={24} />, title: "Chất lượng cao cấp", desc: "Sản phẩm được tuyển chọn kỹ lưỡng từ các thương hiệu uy tín." },
-              { icon: <Truck size={24} />, title: "Giao hàng nhanh", desc: "Đơn hàng được vận chuyển hỏa tốc trong vòng 24h." },
-              { icon: <Headphones size={24} />, title: "Tư vấn tận tâm", desc: "Chúng tôi luôn sẵn sàng lắng nghe và hỗ trợ bạn 24/7." }
+              {
+                icon: <Star size={24} />,
+                title: "Chất lượng cao cấp",
+                desc: "Sản phẩm được tuyển chọn kỹ lưỡng từ các thương hiệu uy tín.",
+              },
+              {
+                icon: <Truck size={24} />,
+                title: "Giao hàng nhanh",
+                desc: "Đơn hàng được vận chuyển hỏa tốc trong vòng 24h.",
+              },
+              {
+                icon: <Headphones size={24} />,
+                title: "Tư vấn tận tâm",
+                desc: "Chúng tôi luôn sẵn sàng lắng nghe và hỗ trợ bạn 24/7.",
+              },
             ].map((feature, idx) => (
               <Col xs={24} md={8} key={idx}>
                 <div className="text-center space-y-4 p-6 hover:-translate-y-1 transition-transform duration-300">
                   <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto text-primary">
                     {feature.icon}
                   </div>
-                  <Title level={4} className="!text-charcoal !font-serif !m-0">{feature.title}</Title>
-                  <Paragraph className="text-gray leading-relaxed m-0">{feature.desc}</Paragraph>
+                  <Title level={4} className="!text-charcoal !font-serif !m-0">
+                    {feature.title}
+                  </Title>
+                  <Paragraph className="text-gray leading-relaxed m-0">
+                    {feature.desc}
+                  </Paragraph>
                 </div>
               </Col>
             ))}
@@ -149,13 +187,22 @@ const HomePage: React.FC = () => {
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
           <div className="text-center mb-16">
-            <Title level={2} className="!text-charcoal !mb-4 !font-serif !text-3xl md:!text-4xl">Sản phẩm nổi bật</Title>
+            <Title
+              level={2}
+              className="!text-charcoal !mb-4 !font-serif !text-3xl md:!text-4xl"
+            >
+              Sản phẩm nổi bật
+            </Title>
             <div className="w-12 h-1 bg-primary/30 mx-auto mb-4 rounded-full"></div>
-            <Paragraph className="text-base text-gray font-serif italic">Những món quà nhỏ dành cho làn da của bạn</Paragraph>
+            <Paragraph className="text-base text-gray font-serif italic">
+              Những món quà nhỏ dành cho làn da của bạn
+            </Paragraph>
           </div>
 
           {loading ? (
-            <div className="text-center py-12"><Spin size="large" className="text-primary" /></div>
+            <div className="text-center py-12">
+              <Spin size="large" className="text-primary" />
+            </div>
           ) : (
             <Row gutter={[24, 32]}>
               {featuredProducts.map((product) => (
@@ -163,14 +210,14 @@ const HomePage: React.FC = () => {
                   <Card
                     hoverable
                     className="border border-gray/10 shadow-sm h-full rounded-2xl overflow-hidden group hover:shadow-lg transition-all duration-300"
-                    bodyStyle={{ padding: '20px' }}
+                    bodyStyle={{ padding: "20px" }}
                     cover={
                       <Link to={`/products/${product.id}`}>
-                        <div className="h-72 overflow-hidden bg-gray/5">
+                        <div className="relative h-72 w-full overflow-hidden bg-gray/5">
                           <img
                             alt={product.name}
                             src={getImageUrl(product.thumb_image)}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                            className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
                           />
                         </div>
                       </Link>
@@ -178,7 +225,10 @@ const HomePage: React.FC = () => {
                   >
                     <Meta
                       title={
-                        <Link to={`/products/${product.id}`} className="text-charcoal hover:text-primary transition-colors line-clamp-1 font-serif text-lg">
+                        <Link
+                          to={`/products/${product.id}`}
+                          className="text-charcoal hover:text-primary transition-colors line-clamp-1 font-serif text-lg"
+                        >
                           {product.name}
                         </Link>
                       }
@@ -187,9 +237,12 @@ const HomePage: React.FC = () => {
                           <Text className="text-primary font-medium text-lg">
                             {formatCurrency(Number(product.min_price || 0))}
                           </Text>
-                          <Link to={`/products/${product.id}`} className="w-full">
-                            <Button 
-                              block 
+                          <Link
+                            to={`/products/${product.id}`}
+                            className="w-full"
+                          >
+                            <Button
+                              block
                               className="rounded-lg border-primary text-primary h-10 hover:!bg-primary hover:!text-white font-medium transition-colors"
                             >
                               Xem chi tiết
@@ -206,7 +259,10 @@ const HomePage: React.FC = () => {
 
           <div className="text-center mt-16">
             <Link to="/products">
-              <Button size="large" className="rounded-lg border-charcoal text-charcoal px-10 h-12 font-medium hover:!border-primary hover:!text-primary transition-colors">
+              <Button
+                size="large"
+                className="rounded-lg border-charcoal text-charcoal px-10 h-12 font-medium hover:!border-primary hover:!text-primary transition-colors"
+              >
                 Xem tất cả sản phẩm
               </Button>
             </Link>
@@ -220,13 +276,23 @@ const HomePage: React.FC = () => {
           <div className="max-w-4xl mx-auto px-4 lg:px-8">
             <div className="bg-white p-10 md:p-16 rounded-2xl shadow-xl shadow-primary/5 border border-gray/10 text-center relative overflow-hidden">
               <div className="relative z-10">
-                <Title level={2} className="!text-charcoal !mb-4 !font-serif !text-3xl">Gia nhập cộng đồng Linh</Title>
+                <Title
+                  level={2}
+                  className="!text-charcoal !mb-4 !font-serif !text-3xl"
+                >
+                  Gia nhập cộng đồng Linh
+                </Title>
                 <Paragraph className="text-base text-gray mb-8 font-serif italic max-w-lg mx-auto leading-relaxed">
-                  Đăng ký ngay để nhận thông báo về bộ sưu tập mới và các ưu đãi bí mật dành riêng cho bạn.
+                  Đăng ký ngay để nhận thông báo về bộ sưu tập mới và các ưu đãi
+                  bí mật dành riêng cho bạn.
                 </Paragraph>
                 <div className="max-w-sm mx-auto">
                   <Link to="/register">
-                    <Button type="primary" size="large" className="bg-primary border-primary w-full h-12 rounded-lg text-base font-medium shadow-sm hover:!bg-primary/90">
+                    <Button
+                      type="primary"
+                      size="large"
+                      className="bg-primary border-primary w-full h-12 rounded-lg text-base font-medium shadow-sm hover:!bg-primary/90"
+                    >
                       Tạo tài khoản ngay
                     </Button>
                   </Link>

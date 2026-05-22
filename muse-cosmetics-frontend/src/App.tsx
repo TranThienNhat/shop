@@ -1,12 +1,14 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { ConfigProvider } from "antd";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
 import { antdTheme } from "./config/theme";
 import MainLayout from "./components/Layout/MainLayout";
 import AdminLayout from "./components/Layout/AdminLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+// Pages
 import HomePage from "./pages/HomePage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
@@ -19,6 +21,8 @@ import OrdersPage from "./pages/OrdersPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import BrandsPageProduct from "./pages/BrandsPage";
+import BlogListPage from "./pages/BlogListPage";
+import BlogDetailPage from "./pages/BlogDetailPage";
 
 // Admin Pages
 import DashboardPage from "./pages/admin/DashboardPage";
@@ -29,14 +33,25 @@ import BrandsPage from "./pages/admin/BrandsPage";
 import AdminOrdersPage from "./pages/admin/OrdersPage";
 import UsersPage from "./pages/admin/UsersPage";
 import CouponManagement from "./pages/admin/CouponManagement";
-
-import "./index.css";
 import BlogAdmin from "./pages/admin/BlogAdmin";
-import BlogListPage from "./pages/BlogListPage";
-import BlogDetailPage from "./pages/BlogDetailPage";
 import SuppliersPage from "./pages/admin/SuppliersPage";
 import PurchaseListPage from "./pages/admin/PurchaseListPage";
 import PurchaseReceiptFormPage from "./pages/admin/PurchaseReceiptFormPage";
+
+import "./index.css";
+
+// Component xử lý trang mặc định khi vào /admin
+const AdminIndexRedirect: React.FC = () => {
+  const { user } = useAuth();
+  
+  // Nếu là nhân viên -> Đẩy về trang Đơn hàng đầu tiên
+  if (user?.role === "staff") {
+    return <Navigate to="/admin/orders" replace />;
+  }
+  
+  // Nếu là admin -> Cho xem Dashboard
+  return <DashboardPage />;
+};
 
 const App: React.FC = () => {
   return (
@@ -45,63 +60,96 @@ const App: React.FC = () => {
         <CartProvider>
           <Router>
             <Routes>
-              {/* Auth Routes */}
+              {/* === AUTH ROUTES === */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
-              <Route
-                path="/checkout/success"
-                element={<CheckoutSuccessPage />}
-              />
+              <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
 
-              {/* Admin Routes */}
+              {/* === ADMIN & STAFF ROUTES === */}
               <Route
                 path="/admin/*"
                 element={
-                  <ProtectedRoute requireAdmin>
+                  // Cả Admin và Staff đều được vào layout quản trị
+                  <ProtectedRoute allowedRoles={["admin", "staff"]}>
                     <AdminLayout>
                       <Routes>
-                        <Route path="/" element={<DashboardPage />} />
+                        {/* TRANG ĐẦU TIÊN TỰ ĐỘNG CHUYỂN HƯỚNG THEO ROLE */}
+                        <Route path="/" element={<AdminIndexRedirect />} />
+
+                        {/* QUYỀN CHUNG: ADMIN & STAFF ĐỀU VÀO ĐƯỢC */}
+                        <Route path="/categories" element={<CategoriesPage />} />
+                        <Route path="/orders" element={<AdminOrdersPage />} />
+                        <Route path="/blogs" element={<BlogAdmin />} />
+                        <Route path="/purchases" element={<PurchaseListPage />} />
+                        <Route path="/purchase/create" element={<PurchaseReceiptFormPage />} />
+                        <Route path="/purchase/edit/:id" element={<PurchaseReceiptFormPage />} />
+
+                        {/* QUYỀN RIÊNG: CHỈ ADMIN MỚI ĐƯỢC VÀO */}
                         <Route
                           path="/products"
-                          element={<AdminProductsPage />}
+                          element={
+                            <ProtectedRoute allowedRoles={["admin"]}>
+                              <AdminProductsPage />
+                            </ProtectedRoute>
+                          }
                         />
                         <Route
                           path="/products/create"
-                          element={<ProductFormPage />}
+                          element={
+                            <ProtectedRoute allowedRoles={["admin"]}>
+                              <ProductFormPage />
+                            </ProtectedRoute>
+                          }
                         />
                         <Route
                           path="/products/:id/edit"
-                          element={<ProductFormPage />}
+                          element={
+                            <ProtectedRoute allowedRoles={["admin"]}>
+                              <ProductFormPage />
+                            </ProtectedRoute>
+                          }
                         />
                         <Route
-                          path="/categories"
-                          element={<CategoriesPage />}
+                          path="/brands"
+                          element={
+                            <ProtectedRoute allowedRoles={["admin"]}>
+                              <BrandsPage />
+                            </ProtectedRoute>
+                          }
                         />
-                        <Route path="/brands" element={<BrandsPage />} />
-                        <Route path="/orders" element={<AdminOrdersPage />} />
-                        <Route path="/users" element={<UsersPage />} />
-                        <Route path="/coupons" element={<CouponManagement />} />
-                        <Route path="/blogs" element={<BlogAdmin />} />
-                        <Route path="/suppliers" element={<SuppliersPage />} />
+                        <Route
+                          path="/users"
+                          element={
+                            <ProtectedRoute allowedRoles={["admin"]}>
+                              <UsersPage />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/coupons"
+                          element={
+                            <ProtectedRoute allowedRoles={["admin"]}>
+                              <CouponManagement />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/suppliers"
+                          element={
+                            <ProtectedRoute allowedRoles={["admin"]}>
+                              <SuppliersPage />
+                            </ProtectedRoute>
+                          }
+                        />
 
-                        {/* SỬA TẠI ĐÂY: Bỏ /admin ở đầu và thống nhất tên purchases */}
-                        <Route
-                          path="/purchases"
-                          element={<PurchaseListPage />}
-                        />
-                        <Route
-                          path="/purchase/create"
-                          element={<PurchaseReceiptFormPage />}
-                        />
-                        <Route
-                          path="/purchase/edit/:id"
-                          element={<PurchaseReceiptFormPage />}
-                        />
-
-                        {/* Thêm trang 404 cho admin để tránh trang trắng khi gõ sai */}
+                        {/* 404 Admin */}
                         <Route
                           path="*"
-                          element={<div>Trang quản trị không tồn tại</div>}
+                          element={
+                            <div className="flex justify-center items-center h-full text-xl text-gray-500">
+                              Trang quản trị không tồn tại hoặc bạn không có quyền truy cập
+                            </div>
+                          }
                         />
                       </Routes>
                     </AdminLayout>
@@ -109,7 +157,7 @@ const App: React.FC = () => {
                 }
               />
 
-              {/* Main Routes */}
+              {/* === MAIN ROUTES (Khách & Người dùng thường) === */}
               <Route
                 path="/*"
                 element={
@@ -117,10 +165,7 @@ const App: React.FC = () => {
                     <Routes>
                       <Route path="/" element={<HomePage />} />
                       <Route path="/products" element={<ProductsPage />} />
-                      <Route
-                        path="/products/:id"
-                        element={<ProductDetailPage />}
-                      />
+                      <Route path="/products/:id" element={<ProductDetailPage />} />
                       <Route path="/cart" element={<CartPage />} />
                       <Route path="/checkout" element={<CheckoutPage />} />
                       <Route path="/orders" element={<OrdersPage />} />
@@ -129,10 +174,12 @@ const App: React.FC = () => {
                       <Route path="/brands" element={<BrandsPageProduct />} />
                       <Route path="/blogs" element={<BlogListPage />} />
                       <Route path="/blogs/:id" element={<BlogDetailPage />} />
+
+                      {/* 404 Main */}
                       <Route
                         path="*"
                         element={
-                          <div className="min-h-screen bg-background flex items-center justify-center">
+                          <div className="min-h-[60vh] bg-background flex items-center justify-center">
                             <div className="text-center">
                               <h1 className="text-4xl font-bold text-charcoal mb-4">
                                 404
@@ -142,7 +189,7 @@ const App: React.FC = () => {
                               </p>
                               <a
                                 href="/"
-                                className="text-primary hover:text-primary/80"
+                                className="text-primary hover:text-primary/80 font-medium"
                               >
                                 Về trang chủ
                               </a>

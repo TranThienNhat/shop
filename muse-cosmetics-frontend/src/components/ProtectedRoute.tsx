@@ -5,12 +5,12 @@ import { Spin } from "antd";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requireAdmin?: boolean;
+  allowedRoles?: string[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
-  requireAdmin = false,
+  allowedRoles,
 }) => {
   const { isAuthenticated, user, isLoading } = useAuth();
   const location = useLocation();
@@ -27,8 +27,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requireAdmin && user?.role !== "admin") {
-    return <Navigate to="/" replace />;
+  if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
+    if (user.role === "user") {
+      return <Navigate to="/" replace />;
+    } else {
+      alert("Bạn không có quyền truy cập trang này!");
+      return <Navigate to="/admin" replace />;
+    }
   }
 
   return <>{children}</>;

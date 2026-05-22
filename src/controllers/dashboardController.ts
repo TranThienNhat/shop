@@ -1,76 +1,132 @@
 import { Request, Response } from "express";
 import pool from "../config/db";
 
-export const getDashboardStats = async (req: Request, res: Response): Promise<Response> => {
+export const getFilteredDashboardStats = async (req: Request, res: Response): Promise<Response> => {
   try {
+    const { year, month, startDate, endDate } = req.query;
+
     const connection = await pool.getConnection();
     try {
-      const [productsCount]: any = await connection.query(
-        "SELECT COUNT(*) as count FROM products WHERE status != 'hidden'"
-      );
+      // 1. Xây dựng điều kiện lọc thời gian (Where Clause)
+      let dateCondition = "1=1"; 
+      let orderParams: any[] = [];
+      
+      // Định dạng nhóm thời gian cho biểu đồ (Mặc định là nhóm theo tháng)
+      let chartGroupFormat = "'%Y-%m'"; 
 
-      const [usersCount]: any = await connection.query(
-        "SELECT COUNT(*) as count FROM users WHERE is_active = 1"
-      );
+      if (startDate && endDate) {
+        dateCondition += " AND created_at >= ? AND created_at <= ?";
+        orderParams.push(`${startDate} 00:00:00`, `${endDate} 23:59:59`);
+        // Nếu lọc khoảng thời gian cụ thể -> Vẽ chart theo Từng Ngày
+        chartGroupFormat = "'%Y-%m-%d'"; 
+      } 
+      else if (year && month) {
+        dateCondition += " AND YEAR(created_at) = ? AND MONTH(created_at) = ?";
+        orderParams.push(Number(year), Number(month));
+        // Nếu lọc theo tháng -> Vẽ chart theo Từng Ngày trong tháng
+        chartGroupFormat = "'%Y-%m-%d'";
+      } 
+      else if (year) {
+        dateCondition += " AND YEAR(created_at) = ?";
+        orderParams.push(Number(year));
+        // Nếu lọc theo năm -> Vẽ chart theo Từng Tháng trong năm
+        chartGroupFormat = "'%Y-%m'";
+      }
 
-      const [ordersCount]: any = await connection.query(
-        "SELECT COUNT(*) as count FROM orders"
-      );
+      // 2. Thống kê Overview (Tổng quan)
+      const overviewQuery = `
+        SELECT 
+          COUNT(*) as total_orders,
+          COALESCE(SUM(CASE WHEN status = 'completed' THEN final_amount ELSE 0 END), 0) as total_revenue,
+          COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) as total_cancelled
+        FROM orders 
+        WHERE ${dateCondition}
+      `;
+      const [overviewResult]: any = await connection.query(overviewQuery, orderParams);
+      
+      const totalOrders = overviewResult[0].total_orders;
+      const totalRevenue = parseFloat(overviewResult[0].total_revenue);
+      const totalCancelled = overviewResult[0].total_cancelled;
+      const cancelRate = totalOrders > 0 ? parseFloat(((totalCancelled / totalOrders) * 100).toFixed(2)) : 0;
 
-      // Dùng final_amount thay vì total
-      const [revenueResult]: any = await connection.query(
-        "SELECT COALESCE(SUM(final_amount), 0) as total FROM orders WHERE status = 'completed'"
-      );
-
-      const [recentOrders]: any = await connection.query(`
-        SELECT id, order_code, final_amount, status, created_at
+      // ---------------------------------------------------------
+      // 3. DỮ LIỆU VẼ BIỂU ĐỒ ĐƯỜNG/CỘT (Doanh thu & Số đơn theo thời gian)
+      // ---------------------------------------------------------
+      const chartDataQuery = `
+        SELECT 
+          DATE_FORMAT(created_at, ${chartGroupFormat}) as label,
+          COUNT(*) as total_orders,
+          COALESCE(SUM(CASE WHEN status = 'completed' THEN final_amount ELSE 0 END), 0) as revenue,
+          COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) as cancelled_orders
         FROM orders
-        ORDER BY created_at DESC
-        LIMIT 10
-      `);
+        WHERE ${dateCondition}
+        GROUP BY label
+        ORDER BY label ASC
+      `;
+      const [revenueChartData]: any = await connection.query(chartDataQuery, orderParams);
 
-      // Top sản phẩm bán chạy qua order_items -> product_variants
-      const [topProducts]: any = await connection.query(`
-        SELECT p.id, p.name, SUM(oi.quantity) as sold_qty, MIN(pv.price) as min_price
+      // ---------------------------------------------------------
+      // 4. DỮ LIỆU VẼ BIỂU ĐỒ TRÒN (Tỷ lệ trạng thái đơn hàng)
+      // ---------------------------------------------------------
+      const orderStatusQuery = `
+        SELECT 
+          status as label, 
+          COUNT(*) as value
+        FROM orders
+        WHERE ${dateCondition}
+        GROUP BY status
+      `;
+      const [orderStatusChart]: any = await connection.query(orderStatusQuery, orderParams);
+
+      // 5. Top sản phẩm bán chạy (áp dụng bộ lọc thời gian theo order)
+      const topProductsQuery = `
+        SELECT 
+          p.id, 
+          p.name, 
+          SUM(oi.quantity) as sold_qty,
+          SUM(oi.price * oi.quantity) as total_sales
         FROM order_items oi
         JOIN product_variants pv ON oi.variant_id = pv.id
         JOIN products p ON pv.product_id = p.id
         JOIN orders o ON oi.order_id = o.id
-        WHERE o.status = 'completed'
+        WHERE o.status = 'completed' AND ${dateCondition.replace(/created_at/g, 'o.created_at')}
         GROUP BY p.id, p.name
         ORDER BY sold_qty DESC
-        LIMIT 5
-      `);
+        LIMIT 10
+      `;
+      const [topProducts]: any = await connection.query(topProductsQuery, orderParams);
 
-      const [monthlyRevenue]: any = await connection.query(`
-        SELECT
-          DATE_FORMAT(created_at, '%Y-%m') as month,
-          COALESCE(SUM(final_amount), 0) as revenue,
-          COUNT(*) as orders
-        FROM orders
-        WHERE status = 'completed'
-          AND created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-        GROUP BY DATE_FORMAT(created_at, '%Y-%m')
-        ORDER BY month DESC
-      `);
-
-      const [orderStatusStats]: any = await connection.query(`
-        SELECT status, COUNT(*) as count, COALESCE(SUM(final_amount), 0) as total_amount
-        FROM orders
-        GROUP BY status
-      `);
+      // 6. Sản phẩm tồn kho (Kho hiện tại - Không phụ thuộc thời gian lọc)
+      const inventoryQuery = `
+        SELECT 
+          p.id, 
+          p.name, 
+          COALESCE(SUM(pv.stock_qty), 0) as total_stock
+        FROM products p
+        LEFT JOIN product_variants pv ON p.id = pv.product_id
+        WHERE p.status = 'active'
+        GROUP BY p.id, p.name
+        ORDER BY total_stock DESC
+        LIMIT 20
+      `;
+      const [inventoryProducts]: any = await connection.query(inventoryQuery);
 
       return res.json({
         message: "Lấy thống kê dashboard thành công",
+        filters: { year, month, startDate, endDate },
         data: {
-          totalProducts: productsCount[0].count,
-          totalUsers: usersCount[0].count,
-          totalOrders: ordersCount[0].count,
-          totalRevenue: parseFloat(revenueResult[0].total),
-          recentOrders,
+          overview: {
+            totalOrders,
+            totalRevenue,
+            cancelRate: `${cancelRate}%`,
+            totalCancelled
+          },
+          charts: {
+            revenueChartData, // Array dùng cho Line Chart / Bar Chart
+            orderStatusChart  // Array dùng cho Pie Chart / Donut Chart
+          },
           topProducts,
-          monthlyRevenue,
-          orderStatusStats,
+          inventoryProducts
         },
       });
     } finally {
@@ -78,36 +134,6 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<Re
     }
   } catch (error) {
     console.error("Dashboard stats error:", error);
-    return res.status(500).json({ message: "Lỗi server" });
-  }
-};
-
-export const getRevenueStats = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    const { period = "month" } = req.query;
-
-    let dateFormat = "%Y-%m";
-    let interval = "12 MONTH";
-
-    if (period === "week") { dateFormat = "%Y-%u"; interval = "12 WEEK"; }
-    else if (period === "year") { dateFormat = "%Y"; interval = "5 YEAR"; }
-
-    const [revenueStats]: any = await pool.query(`
-      SELECT
-        DATE_FORMAT(created_at, '${dateFormat}') as period,
-        COALESCE(SUM(final_amount), 0) as revenue,
-        COUNT(*) as orders,
-        AVG(final_amount) as avg_order_value
-      FROM orders
-      WHERE status = 'completed'
-        AND created_at >= DATE_SUB(NOW(), INTERVAL ${interval})
-      GROUP BY DATE_FORMAT(created_at, '${dateFormat}')
-      ORDER BY period DESC
-    `);
-
-    return res.json({ message: "Lấy thống kê doanh thu thành công", data: revenueStats });
-  } catch (error) {
-    console.error("Revenue stats error:", error);
     return res.status(500).json({ message: "Lỗi server" });
   }
 };

@@ -51,7 +51,8 @@ const PurchaseListPage: React.FC = () => {
     { 
       title: "Tổng tiền", 
       dataIndex: "total_amount", 
-      render: (val: number) => <Tag color="blue">{val?.toLocaleString()}đ</Tag> 
+      // Ép về Number và dùng 'vi-VN' để hiển thị dấu chấm (VD: 150.000đ) và tự động bỏ .00
+      render: (val: any) => <Tag color="blue">{Number(val).toLocaleString('vi-VN')}đ</Tag> 
     },
     { 
       title: "Ngày nhập", 

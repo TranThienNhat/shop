@@ -67,7 +67,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </Link>
       ),
     },
-    ...(user?.role === "admin"
+    // Đã sửa tại đây: Cho phép cả Admin và Staff thấy nút Quản trị
+    ...(user?.role === "admin" || user?.role === "staff"
       ? [
           {
             key: "admin",
@@ -204,7 +205,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           rel="noopener noreferrer"
           className="w-14 h-14 bg-[#0068FF] text-white rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform overflow-hidden"
         >
-          {/* Bạn có thể dùng một img icon Zalo để nhìn chuyên nghiệp hơn */}
           <img 
             src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg" 
             alt="Zalo" 

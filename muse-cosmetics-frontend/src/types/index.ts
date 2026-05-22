@@ -53,7 +53,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "staff";
   is_active?: number | boolean;
   created_at?: string;
 }
