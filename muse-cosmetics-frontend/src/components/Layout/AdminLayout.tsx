@@ -41,12 +41,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   // PHÂN QUYỀN MENU TRONG SIDEBAR
   const menuItems = [
-    // --- 1. Các menu CHUNG (Admin & Staff đều thấy) ---
-    {
-      key: "/admin",
-      icon: <DashboardOutlined />,
-      label: <Link to="/admin">Dashboard</Link>,
-    },
+    // --- 1. CHỈ ADMIN MỚI THẤY DASHBOARD ---
+    ...(user?.role === "admin"
+      ? [
+          {
+            key: "/admin",
+            icon: <DashboardOutlined />,
+            label: <Link to="/admin">Dashboard</Link>,
+          },
+        ]
+      : []),
+
+    // --- 2. CÁC MENU CHUNG (Admin & Staff đều thấy) ---
     {
       key: "/admin/categories",
       icon: <TagsOutlined />,
@@ -68,7 +74,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: <Link to="/admin/purchases">Nhập hàng kho</Link>,
     },
 
-    // --- 2. Các menu RIÊNG (Chỉ Admin mới thấy) ---
+    // --- 3. CÁC MENU RIÊNG KHÁC (Chỉ Admin mới thấy) ---
     ...(user?.role === "admin"
       ? [
           {
@@ -123,16 +129,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         collapsible
         collapsed={collapsed}
         className="bg-white shadow-lg fixed left-0 top-0 bottom-0 z-50"
-        width={180}
+        width={200} // Nới rộng thêm một chút cho đẹp chữ
         style={{ height: "100vh", overflow: "auto" }}
       >
         <div className="p-4 border-b border-gray-100">
           <Link to="/admin" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#BC8F8F] rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-[#BC8F8F] rounded-lg flex items-center justify-center shrink-0">
               <span className="text-white font-bold text-sm">L</span>
             </div>
             {!collapsed && (
-              <Title level={5} className="!mb-0 !text-[#2D2D2D]">
+              <Title level={5} className="!mb-0 !text-[#2D2D2D] truncate">
                 {user?.role === "admin" ? "Linh Admin" : "Linh Staff"}
               </Title>
             )}
@@ -146,9 +152,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         />
       </Sider>
 
-      <Layout
-        style={{ marginLeft: collapsed ? 70 : 180, transition: "all 0.2s" }}
-      >
+      <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: "all 0.2s" }}>
         <Header className="bg-white/80 backdrop-blur-md shadow-sm px-6 flex items-center justify-between sticky top-0 z-40">
           <Button
             type="text"
@@ -158,10 +162,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           />
           <Space size="large">
             <Dropdown menu={{ items: userMenuItems }} trigger={["click"]}>
-              <Button
-                type="text"
-                className="flex items-center gap-2 font-medium"
-              >
+              <Button type="text" className="flex items-center gap-2 font-medium">
                 <UserOutlined /> {user?.name}
               </Button>
             </Dropdown>
