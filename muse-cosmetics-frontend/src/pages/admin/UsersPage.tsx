@@ -134,11 +134,21 @@ const UsersPage: React.FC = () => {
       title: "Vai trò",
       dataIndex: "role",
       key: "role",
-      render: (role: string) => (
-        <Tag color={role === "admin" ? "red" : "blue"}>
-          {role === "admin" ? "Quản trị viên" : "Người dùng"}
-        </Tag>
-      ),
+      render: (role: string) => {
+        // Cập nhật hàm render để hiển thị màu theo 3 quyền
+        let color = "blue";
+        let label = "Người dùng";
+
+        if (role === "admin") {
+          color = "red";
+          label = "Quản trị viên";
+        } else if (role === "staff") {
+          color = "orange";
+          label = "Nhân viên";
+        }
+
+        return <Tag color={color}>{label}</Tag>;
+      },
     },
     {
       title: "Trạng thái",
@@ -172,7 +182,8 @@ const UsersPage: React.FC = () => {
             title="Bạn có chắc muốn xóa người dùng này?"
             onConfirm={() => handleDelete(record.id)}
             okText="Xóa"
-            cancelText="Hủy">
+            cancelText="Hủy"
+          >
             <Button type="text" danger icon={<DeleteOutlined />} size="small" />
           </Popconfirm>
         </Space>
@@ -201,9 +212,11 @@ const UsersPage: React.FC = () => {
             placeholder="Vai trò"
             style={{ width: 150 }}
             value={roleFilter}
-            onChange={setRoleFilter}>
+            onChange={setRoleFilter}
+          >
             <Select.Option value="all">Tất cả</Select.Option>
             <Select.Option value="admin">Quản trị viên</Select.Option>
+            <Select.Option value="staff">Nhân viên</Select.Option> {/* Thêm lọc Nhân viên */}
             <Select.Option value="user">Người dùng</Select.Option>
           </Select>
           <Button icon={<SearchOutlined />} onClick={loadUsers}>
@@ -236,12 +249,14 @@ const UsersPage: React.FC = () => {
           form.resetFields();
         }}
         footer={null}
-        width={600}>
+        width={600}
+      >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item
             name="name"
             label="Tên"
-            rules={[{ required: true, message: "Vui lòng nhập tên" }]}>
+            rules={[{ required: true, message: "Vui lòng nhập tên" }]}
+          >
             <Input placeholder="Nhập tên người dùng" />
           </Form.Item>
 
@@ -251,7 +266,8 @@ const UsersPage: React.FC = () => {
             rules={[
               { required: true, message: "Vui lòng nhập email" },
               { type: "email", message: "Email không hợp lệ" },
-            ]}>
+            ]}
+          >
             <Input placeholder="Nhập email" />
           </Form.Item>
 
@@ -262,6 +278,7 @@ const UsersPage: React.FC = () => {
           <Form.Item name="role" label="Vai trò">
             <Select>
               <Select.Option value="user">Người dùng</Select.Option>
+              <Select.Option value="staff">Nhân viên</Select.Option> {/* Thêm tùy chọn Nhân viên vào Form */}
               <Select.Option value="admin">Quản trị viên</Select.Option>
             </Select>
           </Form.Item>
@@ -269,7 +286,8 @@ const UsersPage: React.FC = () => {
           <Form.Item
             name="is_active"
             label="Trạng thái"
-            valuePropName="checked">
+            valuePropName="checked"
+          >
             <Switch checkedChildren="Hoạt động" unCheckedChildren="Bị khóa" />
           </Form.Item>
 
@@ -279,7 +297,8 @@ const UsersPage: React.FC = () => {
                 setModalVisible(false);
                 setEditingUser(null);
                 form.resetFields();
-              }}>
+              }}
+            >
               Hủy
             </Button>
             <Button type="primary" htmlType="submit">
