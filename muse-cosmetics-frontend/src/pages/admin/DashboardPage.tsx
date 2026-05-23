@@ -80,7 +80,7 @@ const formatCompactNumber = (number: number) => {
   if (number === 0) return "0";
   if (number >= 1000000000) return `${+(number / 1000000000).toFixed(1)} Tỷ`;
   if (number >= 1000000) return `${+(number / 1000000).toFixed(1)} Tr`;
-  if (number >= 1000) return `${+(number / 1000).toFixed(1)}K`;
+  if (number >= 1000) return `${+(number / 1000).toFixed(1)}000`;
   return number.toString();
 };
 

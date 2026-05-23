@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Row, Col, Card, Button, Typography, Carousel, Spin } from "antd";
 import { Link } from "react-router-dom";
-import { ArrowRight, Star, Headphones, Truck } from "lucide-react";
+import { ArrowRight, Star, Headphones, Truck, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "../utils/api";
 import { getImageUrl, formatCurrency } from "../utils/helpers";
 
@@ -12,11 +12,16 @@ const HomePage: React.FC = () => {
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  // Tạo mảng ref để điều khiển các Carousel bên trong vòng lặp một cách độc lập
+  const showcaseCarouselRefs = useRef<(any)[]>([]);
 
   const showcaseImages = [
-    getImageUrl("/uploads/blogs/blogs-1778406595811-411473625.png"),
-    getImageUrl("/uploads/blogs/blogs-1778406595811-411473625.png"),
-    getImageUrl("/uploads/blogs/blogs-1778406595811-411473625.png"),
+    getImageUrl("/uploads/banner/banner30.png"),  
+    getImageUrl("/uploads/banner/banner 20.png"),
+    getImageUrl("/uploads/banner/banner 15.png"),
+    getImageUrl("/uploads/banner/banner 5.png"),
+    getImageUrl("/uploads/banner/banner 4.png"),
   ];
 
   useEffect(() => {
@@ -58,12 +63,15 @@ const HomePage: React.FC = () => {
     <div className="bg-background min-h-screen">
       {/* 1. HERO SECTION */}
       <section className="relative bg-white border-b border-gray/10">
+        {/* Carousel chứa nội dung text lớn bên ngoài */}
         <Carousel autoplay effect="fade" className="h-[500px] md:h-[600px]">
           {heroSlides.map((slide, index) => (
             <div key={index}>
               <div className="h-[500px] md:h-[600px] flex items-center bg-background/50">
                 <div className="max-w-7xl mx-auto px-4 lg:px-8 w-full">
                   <Row align="middle" gutter={[48, 48]}>
+                    
+                    {/* CỘT TRÁI: TEXT & NÚT BẤM */}
                     <Col xs={24} lg={12} className="z-10">
                       <div className="space-y-6 max-w-xl">
                         <div>
@@ -84,26 +92,28 @@ const HomePage: React.FC = () => {
                           <Button
                             type="primary"
                             size="large"
-                            className="bg-primary border-primary h-12 px-8 rounded-lg text-base font-medium shadow-sm hover:!bg-primary/90 flex items-center gap-2 group"
+                            className="bg-primary border-primary h-12 px-8 rounded-lg text-base font-medium shadow-sm hover:!bg-primary/90 flex items-center gap-2 group/btn"
                           >
                             {slide.cta}{" "}
                             <ArrowRight
                               size={18}
-                              className="group-hover:translate-x-1 transition-transform"
+                              className="group-hover/btn:translate-x-1 transition-transform"
                             />
                           </Button>
                         </Link>
                       </div>
                     </Col>
 
-                    {/* SHOWCASE IMAGES */}
+                    {/* CỘT PHẢI: SHOWCASE IMAGES (CÓ NÚT CHUYỂN ẢNH) */}
                     <Col xs={24} lg={12} className="hidden lg:block">
-                      <div className="relative group p-4">
-                        <div className="absolute inset-0 bg-primary/5 rounded-3xl blur-xl group-hover:bg-primary/10 transition-all duration-700"></div>
+                      <div className="relative group/showcase p-4">
+                        {/* Hiệu ứng phát sáng phía sau ảnh */}
+                        <div className="absolute inset-0 bg-primary/5 rounded-3xl blur-xl group-hover/showcase:bg-primary/10 transition-all duration-700"></div>
 
-                        {/* Container chính của Banner: Khóa cứng chiều cao và ẩn phần tràn (overflow-hidden) */}
-                        <div className="relative h-[450px] w-full overflow-hidden rounded-2xl shadow-lg border border-white/50 bg-gray/5">
+                        {/* Thêm class group/img để bắt sự kiện hover riêng cho khung ảnh này */}
+                        <div className="relative h-[500px] w-full overflow-hidden rounded-2xl shadow-lg border border-white/50 bg-gray/5 group/img">
                           <Carousel
+                            ref={(el) => (showcaseCarouselRefs.current[index] = el)} // Gắn ref theo từng vị trí index
                             autoplay
                             autoplaySpeed={4000}
                             effect="fade"
@@ -112,9 +122,8 @@ const HomePage: React.FC = () => {
                             {showcaseImages.map((img, i) => (
                               <div
                                 key={i}
-                                className="relative h-[450px] w-full"
+                                className="relative h-[500px] w-full"
                               >
-                                {/* Dùng absolute, inset-0, object-cover để ảnh luôn bao phủ toàn bộ container mà không bị méo tỉ lệ */}
                                 <img
                                   src={img}
                                   alt={`Banner Linh Cosmetics ${i + 1}`}
@@ -123,6 +132,23 @@ const HomePage: React.FC = () => {
                               </div>
                             ))}
                           </Carousel>
+
+                          {/* --- NÚT ĐIỀU HƯỚNG BÊN TRONG KHUNG ẢNH --- */}
+                          <button
+                            onClick={() => showcaseCarouselRefs.current[index]?.prev()} // Điều khiển đúng slide hiện tại
+                            className="absolute top-1/2 left-4 z-20 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/40 backdrop-blur-md rounded-full text-white hover:text-charcoal shadow-md opacity-0 group-hover/img:opacity-100 transition-all duration-300 border border-white/30"
+                            aria-label="Previous image"
+                          >
+                            <ChevronLeft size={24} strokeWidth={1.5} />
+                          </button>
+
+                          <button
+                            onClick={() => showcaseCarouselRefs.current[index]?.next()} // Điều khiển đúng slide hiện tại
+                            className="absolute top-1/2 right-4 z-20 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/40 backdrop-blur-md rounded-full text-white hover:text-charcoal shadow-md opacity-0 group-hover/img:opacity-100 transition-all duration-300 border border-white/30"
+                            aria-label="Next image"
+                          >
+                            <ChevronRight size={24} strokeWidth={1.5} />
+                          </button>
                         </div>
 
                         {/* Decorative Tag */}
